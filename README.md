@@ -16,7 +16,8 @@ SkinWise is a comprehensive web-based diagnostic tool designed to enhance health
 - Python 3.8+
 - Flask
 - PyTorch/TensorFlow/Keras
-- PostgreSQL
+- Streamlit
+- Deta
 - A web browser
 
 ### Installation
