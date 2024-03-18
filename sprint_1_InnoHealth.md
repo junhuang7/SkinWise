@@ -1,4 +1,4 @@
-# Practicum Sprint 3
+# Practicum Sprint 1
 ## Team Name (if applicable)
 SkinWise
 
