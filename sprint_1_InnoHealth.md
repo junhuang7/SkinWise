@@ -1,6 +1,6 @@
-# Practicum Sprint 1
+# Practicum Sprint 3
 ## Team Name (if applicable)
-InnoHealth
+SkinWise
 
 ## Tentative Team Members & Roles
 Jun Huang,(jhuang709) - Project Manager; AI Engineer  
