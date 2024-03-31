@@ -2,18 +2,18 @@
 # SkinWise: A Web-Based Diagnostic Tool for Skin Cancer Detection
 
 ## Introduction
-SkinWise is a comprehensive web-based diagnostic tool designed to enhance healthcare providers' capabilities, including hospitals and doctors, in the early detection and efficient management of skin cancer, with a particular focus on melanoma. Utilizing advanced machine learning techniques and leveraging the Skin Cancer ISIC dataset alongside Fast Healthcare Interoperability Resources (FHIR), SkinWise provides an innovative solution for accurate classification and management of skin cancer.
+SkinWise revolutionizes the approach to skin cancer detection, particularly melanoma, by incorporating advanced machine learning models and FHIR standards. It empowers healthcare professionals with precise, real-time diagnostic suggestions.
 
 ## Features
-- **Advanced Machine Learning Model**: Utilizes the Skin Cancer ISIC dataset for accurate classification of skin cancer.
-- **FHIR Integration**: Ensures seamless interoperability within the healthcare system, promoting efficient data exchange.
-- **User-Friendly Interface**: Simplifies the process of uploading and analyzing images of skin lesions.
-- **Real-Time Diagnostic Suggestions**: Provides healthcare professionals with immediate feedback on potential diagnoses.
+- **Advanced Machine Learning Model**: Leverages the Skin Cancer ISIC dataset for top-notch accuracy.
+- **FHIR Integration**: Guarantees efficient data interoperability within healthcare systems.
+- **User-Friendly Interface**: Offers a straightforward process for uploading and analyzing skin lesion images.
+- **Real-Time Diagnostic Suggestions**: Immediate, insightful diagnostic feedback for healthcare professionals.
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.12.1
 - Flask
 - PyTorch/TensorFlow/Keras
 - Streamlit
@@ -21,45 +21,48 @@ SkinWise is a comprehensive web-based diagnostic tool designed to enhance health
 - A web browser
 
 ### Installation
-1. Clone the repository to your local machine.
+1. Secure a copy of the repository on your local machine.
    ```
    git clone https://github.com/yourusername/SkinWise.git
    ```
-2. Install the required dependencies.
+2. Set up the necessary dependencies.
    ```
    pip install -r requirements.txt
    ```
-3. Initialize the database.
+3. Ready the database.
    ```
    flask db upgrade
    ```
-4. Run the Flask application.
+4. Activate the Flask app.
    ```
    flask run
    ```
-5. Open a web browser and navigate to `http://127.0.0.1:5000/` to start using SkinWise.
+5. Utilize a web browser to explore SkinWise at `http://127.0.0.1:5000/`.
+
+### Running with Docker
+1. Build the Docker image from the project directory:
+   ```
+   docker build -t skinwise .
+   ```
+2. Run the container:
+   ```
+   docker run -p 8501:8501 skinwise
+   ```
+3. Access SkinWise through your web browser at `http://localhost:8501`.
 
 ## Usage
-1. **Home Page**: Navigate through the platform and access different functionalities.
-2. **Data Input/Upload**: Upload patient images for analysis.
-3. **Results Display**: View the diagnostic suggestions and analysis results.
-4. **User Dashboard**: (If applicable) Access historical data and analyses.
+Explore various functionalities like data uploading for analysis, viewing results, and accessing historical data on the user dashboard.
 
 ## Contributing
-We welcome contributions to SkinWise. Please follow these steps to contribute:
-1. Fork the repository.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a pull request.
+Contributions are welcome. To contribute, fork the repository, create your feature branch, commit your changes, push to the branch, and initiate a pull request.
 
 ## License
-Distributed under the MIT License. See `LICENSE` for more information.
+SkinWise is under the MIT License.
 
 ## Contact
-- Jun Huang - jhuang709@gatech.edu
-- Zhiqiu Jiang - zjiang88@gatech.edu
-- Zifeng Zhang - zzhang3138@gatech.edu
+- Jun Huang - [email](mailto:jhuang709@gatech.edu)
+- Zhiqiu Jiang - [email](mailto:zjiang88@gatech.edu)
+- Zifeng Zhang - [email](mailto:zzhang3138@gatech.edu)
 
 ## Acknowledgments
 - Skin Cancer ISIC Dataset
