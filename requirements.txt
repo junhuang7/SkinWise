@@ -1,4 +1,4 @@
-deta==1.1.0
-streamlit==1.10.0
-streamlit_option_menu==0.3.2
-plotly==4.14.3
+deta==1.2.0
+streamlit==1.32.2
+streamlit_option_menu==0.3.12
+plotly==5.20.0
