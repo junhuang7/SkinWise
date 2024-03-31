@@ -23,7 +23,7 @@ SkinWise revolutionizes the approach to skin cancer detection, particularly mela
 ### Installation
 1. Secure a copy of the repository on your local machine.
    ```
-   git clone https://github.com/yourusername/SkinWise.git
+   git clone https://github.gatech.edu/jhuang709/SkinWise.git
    ```
 2. Set up the necessary dependencies.
    ```
