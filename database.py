@@ -52,6 +52,16 @@ def get_all_patients():
         logger.error(f"Error fetching patients: {e}")
         raise
 
+def fetch_all_periods():
+    """Fetch all unique periods from the patient records."""
+    try:
+        # This is a simplified example. Adjust the logic based on how you're storing or determining periods.
+        periods = db_session.query(Patient.follow_up_schedule).distinct().all()
+        return [period[0] for period in periods]
+    except Exception as e:
+        logger.error(f"Error fetching periods: {e}")
+        raise
+
 # Additional CRUD operations (update, delete) should follow similar structure
 
 # Session Cleanup
