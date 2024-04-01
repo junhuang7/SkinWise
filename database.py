@@ -74,6 +74,37 @@ def fetch_all_periods():
         logger.error(f"Error fetching periods: {e}")
         raise
 
+def get_period_data(period):
+    try:
+        # Splitting the period into year and month for the query, if necessary
+        # This example assumes 'period' format is 'YYYY_MM'
+        year, month = period.split('_')
+        
+        # Constructing a query that matches the follow_up_schedule format
+        # Adjust this query based on your actual data model and requirements
+        # Example: follow_up_schedule format 'YYYY-MM'
+        formatted_period = f"{year}-{month}"
+        
+        # Fetching patients based on the follow-up schedule
+        # Modify the query as per your database schema and data format
+        patients = db_session.query(Patient).filter(Patient.follow_up_schedule.like(f"%{formatted_period}%")).all()
+        
+        # Convert the SQLAlchemy model instances to a dictionary or any format that suits your downstream processing
+        patient_data = [{
+            "name": patient.name,
+            "age": patient.age,
+            "diagnosis": patient.diagnosis,
+            "treatment_plan": patient.treatment_plan,
+            "medication": patient.medication,
+            "follow_up_schedule": patient.follow_up_schedule,
+            "comments": patient.comments
+        } for patient in patients]
+        
+        return patient_data
+    except Exception as e:
+        logger.error(f"Error fetching data for period {period}: {e}")
+        raise
+
 
 # Additional CRUD operations (update, delete) should follow similar structure
 
