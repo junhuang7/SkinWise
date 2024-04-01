@@ -1,19 +1,22 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey
+import os
+from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
+import logging
 
-# Define the database URI
-DATABASE_URI = 'sqlite:///patients.db'
+# Environment Configuration
+DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///patients.db')
 
-# Create an engine
-engine = create_engine(DATABASE_URI, connect_args={"check_same_thread": False})
+# Logging Configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Create a scoped session
-db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
+# Engine and Session Setup
+engine = create_engine(DATABASE_URI, connect_args={"check_same_thread": False}, echo=True, pool_size=20, max_overflow=0)
+db_session = scoped_session(sessionmaker(bind=engine))
 
-# Base class for declarative models
+# Declarative Base
 Base = declarative_base()
-Base.query = db_session.query_property()
 
 class Patient(Base):
     __tablename__ = 'patients'
@@ -26,46 +29,35 @@ class Patient(Base):
     follow_up_schedule = Column(String(250))
     comments = Column(Text)
 
+# Database Initialization
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(engine)
 
-def insert_patient(name, age, diagnosis, treatment_plan, medication, follow_up_schedule, comments):
-    """Insert a new patient into the database."""
-    new_patient = Patient(
-        name=name,
-        age=age,
-        diagnosis=diagnosis,
-        treatment_plan=treatment_plan,
-        medication=medication,
-        follow_up_schedule=follow_up_schedule,
-        comments=comments
-    )
-    db_session.add(new_patient)
-    db_session.commit()
+# CRUD Operations with Error Handling
+def insert_patient(**kwargs):
+    try:
+        new_patient = Patient(**kwargs)
+        db_session.add(new_patient)
+        db_session.commit()
+        logger.info("New patient added.")
+    except Exception as e:
+        db_session.rollback()
+        logger.error(f"Error adding patient: {e}")
+        raise
 
 def get_all_patients():
-    """Return all patients."""
-    return Patient.query.all()
+    try:
+        return Patient.query.all()
+    except Exception as e:
+        logger.error(f"Error fetching patients: {e}")
+        raise
 
-def get_patient_by_id(patient_id):
-    """Return a patient by their ID."""
-    return Patient.query.get(patient_id)
+# Additional CRUD operations (update, delete) should follow similar structure
 
-def update_patient(patient_id, **kwargs):
-    """Update patient information."""
-    patient = get_patient_by_id(patient_id)
-    for key, value in kwargs.items():
-        setattr(patient, key, value)
-    db_session.commit()
+# Session Cleanup
+def cleanup():
+    db_session.remove()
 
-def delete_patient(patient_id):
-    """Delete a patient from the database."""
-    patient = get_patient_by_id(patient_id)
-    db_session.delete(patient)
-    db_session.commit()
-
-# Make sure to call init_db() at the right place in your actual app to initialize the DB
-# For example, call init_db() when your application starts
-
-# Don't forget to close the session after the app stops or at the end of a request
-# For example, in Streamlit you might use st.on_session_end(db_session.remove)
+# Make sure to call init_db() at the appropriate place in your application
+if __name__ == "__main__":
+    init_db()
