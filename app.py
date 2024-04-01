@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit_option_menu import option_menu
 
+from database import db_session, insert_period_data, fetch_all_periods, get_period_data, init_db
+
 # Assuming 'database.py' contains SQLAlchemy setup and CRUD operations
 from database import db_session, insert_period_data, fetch_all_periods, get_period_data
 
@@ -15,6 +17,10 @@ page_title = "Patient Information Tracker"
 page_icon = ":hospital:"
 layout = "centered"
 # ------------------------------------------
+
+if __name__ == "__main__":
+    # Initialize the database when the app starts
+    init_db()  
 
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 st.title(f"{page_title} {page_icon}")
