@@ -34,9 +34,18 @@ def init_db():
     Base.metadata.create_all(engine)
 
 # CRUD Operations with Error Handling
-def insert_period_data(**kwargs):
+def insert_period_data(form_data):
     try:
-        new_patient = Patient(**kwargs)
+        # Assuming form_data is a dictionary that contains all necessary patient fields
+        new_patient = Patient(
+            name=form_data.get("Name"),
+            age=form_data.get("Age"),
+            diagnosis=form_data.get("Diagnosis"),
+            treatment_plan=form_data.get("Treatment Plan"),
+            medication=form_data.get("Medication"),
+            follow_up_schedule=form_data.get("Follow-up Schedule"),
+            comments=form_data.get("Comment")
+        )
         db_session.add(new_patient)
         db_session.commit()
         logger.info("New patient added.")
@@ -44,6 +53,7 @@ def insert_period_data(**kwargs):
         db_session.rollback()
         logger.error(f"Error adding patient: {e}")
         raise
+
 
 def get_all_patients():
     try:
