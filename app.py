@@ -56,14 +56,17 @@ if selected == "Data Entry":
         comment = st.text_area("Comment:", placeholder="Enter a comment here...")
 
         if st.form_submit_button("Save Data"):
-            # Convert form data to a dictionary
-            form_data = {info: st.session_state[info] for info in patient_info_categories + treatment_info}
-            form_data["comment"] = comment
-            form_data["period"] = f"{st.session_state['year']}_{st.session_state['month']}"
-            
-            # Insert data into database
-            insert_period_data(form_data)
-            st.success("Data saved successfully!")
+            # Assuming form_data is structured appropriately for the Patient model
+            insert_patient(
+                name=st.session_state.get("Name"),
+                age=st.session_state.get("Age"),
+                diagnosis=st.session_state.get("Diagnosis"),
+                treatment_plan=st.session_state.get("Treatment Plan"),
+                medication=st.session_state.get("Medication"),
+                follow_up_schedule=st.session_state.get("Follow-up Schedule"),
+                comments=comment
+            )
+            st.success("Patient data saved successfully!")
 
 # Plot Patient Information
 if selected == "Data Visualization":
