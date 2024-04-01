@@ -75,17 +75,6 @@ def fetch_all_periods():
         raise
 
 
-def insert_period_data(form_data):  # Update function name
-    try:
-        new_patient = Patient(**form_data)
-        db_session.add(new_patient)
-        db_session.commit()
-        logger.info("New patient added.")
-    except Exception as e:
-        db_session.rollback()
-        logger.error(f"Error adding patient: {e}")
-        raise
-
 # Additional CRUD operations (update, delete) should follow similar structure
 
 # Session Cleanup
