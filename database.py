@@ -34,7 +34,7 @@ def init_db():
     Base.metadata.create_all(engine)
 
 # CRUD Operations with Error Handling
-def insert_patient(**kwargs):
+def insert_period_data(**kwargs):
     try:
         new_patient = Patient(**kwargs)
         db_session.add(new_patient)
@@ -52,12 +52,18 @@ def get_all_patients():
         logger.error(f"Error fetching patients: {e}")
         raise
 
-def get_period_data(period):
+def fetch_all_periods():
     try:
-        return Patient.query.filter(Patient.follow_up_schedule == period).all()
+        # Assuming 'follow_up_schedule' is stored in a way that allows this query to work
+        # Modify the query as necessary to fit your actual data storage format
+        periods = db_session.query(Patient.follow_up_schedule).distinct().all()
+        # Flatten the list of tuples into a list of strings
+        periods = [period[0] for period in periods if period[0] is not None]
+        return periods
     except Exception as e:
-        logger.error(f"Error fetching period data: {e}")
+        logger.error(f"Error fetching periods: {e}")
         raise
+
 
 def insert_period_data(form_data):  # Update function name
     try:
