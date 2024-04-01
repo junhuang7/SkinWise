@@ -90,4 +90,4 @@ if selected == "Data Visualization":
 def cleanup():
     db_session.remove()
 
-st.on_session_end(cleanup)
+#st.on_session_end(cleanup)
