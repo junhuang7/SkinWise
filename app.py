@@ -49,8 +49,8 @@ def format_date(fhir_date):
 def create_fhir_patient(form_data):
     patient = Patient()
     name = humanname.HumanName()
-    name.family = form_data['Name'].split()[-1]  # Family name is typically the last name
-    name.given = [form_data['Name'].split()[0]]  # Given name is typically the first name
+    name.family = form_data['Name'].split()[-1]
+    name.given = [form_data['Name'].split()[0]]
     patient.name = [name]
     patient.birthDate = FHIRDate(form_data['BirthDate'])
     return patient
@@ -61,8 +61,8 @@ def calculate_age(birthdate):
 
 def save_patient_to_fhir(patient):
     try:
-        patient.create(smart.server)
-        logger.info("Patient saved to FHIR server.")
+        result = patient.create(smart.server)
+        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].given[0]} {patient.name[0].family}, Birth Date = {format_date(patient.birthDate)}")
         st.success("Patient data saved to FHIR server successfully!")
     except Exception as e:
         logger.error(f"Failed to save patient: {e}")
