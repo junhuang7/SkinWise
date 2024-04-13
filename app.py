@@ -62,16 +62,22 @@ def calculate_age(birthdate):
 def save_patient_to_fhir(patient):
     try:
         result = patient.create(smart.server)
-        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].given[0]} {patient.name[0].family}, Birth Date = {format_date(patient.birthDate)}")
+        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].text}, Birth Date = {format_date(patient.birthDate)}")
         st.success("Patient data saved to FHIR server successfully!")
     except Exception as e:
-        logger.error(f"Failed to save patient: {e}")
+        logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
 def fetch_all_patients():
-    search = Patient.where(struct={})
-    results = search.perform_resources(smart.server)
-    return results
+    try:
+        search = Patient.where(struct={})
+        results = search.perform_resources(smart.server)
+        logger.info(f"Fetched {len(results)} patients from FHIR server.")
+        return results
+    except Exception as e:
+        logger.error(f"Failed to fetch patients: {e}", exc_info=True)
+        st.error(f"Error fetching data from FHIR server: {e}")
+        return []
 
 def delete_patient(patient_id):
     patient = Patient.read(patient_id, smart.server)
@@ -80,7 +86,7 @@ def delete_patient(patient_id):
         logger.info(f"Deleted patient {patient_id}")
         st.success('Patient deleted successfully!')
     except Exception as e:
-        logger.error(f"Failed to delete patient {patient_id}: {e}")
+        logger.error(f"Failed to delete patient {patient_id}: {e}", exc_info=True)
         st.error(f"Failed to delete patient: {e}")
 
 # Input & Save Patient Information
@@ -113,11 +119,11 @@ if selected == "Data Visualization":
     if refresh or not st.session_state.get('fetched', False):
         all_patients = fetch_all_patients()
         st.session_state['fetched'] = True  # Mark as fetched
+        st.session_state['all_patients'] = all_patients  # Store in session state
     else:
         all_patients = st.session_state.get('all_patients', [])
     
     if all_patients:
-        st.session_state['all_patients'] = all_patients  # Store in session state for later retrieval without refetching
         for patient in all_patients:
             birth_date = format_date(patient.birthDate)
             st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
