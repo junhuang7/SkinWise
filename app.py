@@ -4,8 +4,8 @@ from datetime import datetime
 import calendar
 from fhirclient import client
 from fhirclient.models.patient import Patient
-from fhirclient.models import humanname
 from fhirclient.models.fhirdate import FHIRDate
+from fhirclient.models import humanname
 import logging
 
 # Logging configuration
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # FHIR Server Configuration
 settings = {
     'app_id': 'my_streamlit_app',
-    'api_base': 'http://hapi.fhir.org/baseR4/'  # Replace with your FHIR server URL
+    'api_base': 'http://hapi.fhir.org/baseR4/'  # Use your FHIR server URL
 }
 smart = client.FHIRClient(settings=settings)
 
@@ -53,25 +53,32 @@ def create_fhir_patient(form_data):
     name.family = form_data['Name'].split()[-1]  # Family name is typically the last name
     name.given = [form_data['Name'].split()[0]]  # Given name is typically the first name
     patient.name = [name]
-    # Ensure birthDate is in the correct format "YYYY-MM-DD"
     patient.birthDate = FHIRDate(datetime.strptime(f"{form_data['year']}-{form_data['month']}-01", "%Y-%B-%d").date().isoformat())
     return patient
 
 def save_patient_to_fhir(patient):
     try:
-        json_output = patient.as_json()
-        logger.info(f"Patient JSON: {json_output}")  # Log the JSON output
         patient.create(smart.server)
         logger.info("Patient saved to FHIR server.")
-    except client.server.FHIRServerException as e:  # More specific exception for server errors
-        error_message = e.response.json()  # Assuming the server returns error details in JSON format
-        logger.error(f"Server responded with an error: {error_message}")
-        st.error(f"Error saving to FHIR server: {error_message}")
-        raise
+        st.success("Patient data saved to FHIR server successfully!")
     except Exception as e:
-        logger.error(f"General Error: {e}")
-        st.error(f"An error occurred: {e}")
-        raise
+        logger.error(f"Failed to save patient: {e}")
+        st.error(f"Error saving to FHIR server: {e}")
+
+def fetch_all_patients():
+    search = Patient.where(struct={})
+    results = search.perform_resources(smart.server)
+    return results
+
+def delete_patient(patient_id):
+    patient = Patient.read(patient_id, smart.server)
+    try:
+        patient.delete()
+        logger.info(f"Deleted patient {patient_id}")
+        st.success('Patient deleted successfully!')
+    except Exception as e:
+        logger.error(f"Failed to delete patient {patient_id}: {e}")
+        st.error(f"Failed to delete patient: {e}")
 
 # Input & Save Patient Information
 if selected == "Data Entry":
@@ -103,13 +110,15 @@ if selected == "Data Entry":
             fhir_patient = create_fhir_patient(form_data)
             # Save FHIR patient to server
             save_patient_to_fhir(fhir_patient)
-            st.success("Patient data saved to FHIR server successfully!")
 
-# Plot Patient Information (Simplified example to be replaced with actual FHIR fetch operations)
+# Data Visualization
 if selected == "Data Visualization":
     st.header("Patient Information Visualization")
-    st.write("Note: Replace this section with actual data fetching and visualization based on FHIR data.")
-
-# Example usage of FHIR client to fetch data would go here
-
-# This application does not interact with a local database since all operations are assumed to be handled via FHIR.
+    all_patients = fetch_all_patients()
+    if all_patients:
+        for patient in all_patients:
+            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {patient.birthDate}")
+            if st.button('Delete', key=patient.id):
+                delete_patient(patient.id)
+    else:
+        st.write("No patients found.")
