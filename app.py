@@ -8,27 +8,19 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
 import logging
 
-# Logging configuration
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Enhanced logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 
 # FHIR Server Configuration
 settings = {
     'app_id': 'my_streamlit_app',
-    'api_base': 'http://hapi.fhir.org/baseR4/'  # Use your FHIR server URL
+    'api_base': 'http://hapi.fhir.org/baseR4/'
 }
 smart = client.FHIRClient(settings=settings)
 
-# ---------------- SETTINGS ----------------
-patient_info_categories = ["Name", "Age", "Diagnosis"]
-treatment_info = ["Treatment Plan", "Medication", "Follow-up Schedule"]
-page_title = "Patient Information Tracker"
-page_icon = ":hospital:"
-layout = "centered"
-# ------------------------------------------
-
-st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
-st.title(f"{page_title} {page_icon}")
+# Application settings and layouts
+st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
+st.title("Patient Information Tracker :hospital:")
 
 # Dropdown values for selecting the period
 years = [datetime.today().year - i for i in range(100)]
@@ -46,6 +38,11 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Navigation menu
 selected = option_menu(None, ["Data Entry", "Data Visualization"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
+
+def format_date(fhir_date):
+    if fhir_date is not None and hasattr(fhir_date, 'date'):
+        return fhir_date.date.isoformat()
+    return "No date available"
 
 def create_fhir_patient(form_data):
     patient = Patient()
@@ -89,26 +86,19 @@ if selected == "Data Entry":
         col2.selectbox("Select Birth Year:", years, index=0, key="year")
 
         with st.expander("Patient Information"):
-            for info in patient_info_categories:
-                if info == "Age":
-                    st.number_input(f"{info}:", min_value=0, max_value=120, key=info)
-                else:
-                    st.text_input(f"{info}:", key=info)
-        with st.expander("Treatment Information"):
-            for treatment in treatment_info:
-                st.text_input(f"{treatment}:", key=treatment)
-        comment = st.text_area("Comment:", placeholder="Enter a comment here...")
+            patient_name = st.text_input("Name:")
+            patient_age = st.number_input("Age:", min_value=0, max_value=120)
+            patient_diagnosis = st.text_input("Diagnosis:")
 
         if st.form_submit_button("Save Data"):
-            # Convert form data to a dictionary
-            form_data = {info: st.session_state[info] for info in patient_info_categories + treatment_info}
-            form_data["comment"] = comment
-            form_data["year"] = st.session_state["year"]
-            form_data["month"] = st.session_state["month"]
-            
-            # Create FHIR patient object
+            form_data = {
+                'Name': patient_name,
+                'Age': patient_age,
+                'Diagnosis': patient_diagnosis,
+                'year': st.session_state['year'],
+                'month': st.session_state['month']
+            }
             fhir_patient = create_fhir_patient(form_data)
-            # Save FHIR patient to server
             save_patient_to_fhir(fhir_patient)
 
 # Data Visualization
@@ -117,7 +107,8 @@ if selected == "Data Visualization":
     all_patients = fetch_all_patients()
     if all_patients:
         for patient in all_patients:
-            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {patient.birthDate}")
+            birth_date = format_date(patient.birthDate)
+            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
             if st.button('Delete', key=patient.id):
                 delete_patient(patient.id)
     else:
