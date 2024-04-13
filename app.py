@@ -21,7 +21,7 @@ smart = client.FHIRClient(settings=settings)
 
 # Application settings and layouts
 st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
-st.title("Patient Information Tracker :hospital:")
+st.title("Patient Information Tracker 🏥")
 
 # Dropdown values for selecting the date
 years = [datetime.today().year - i for i in range(100)]
@@ -39,7 +39,7 @@ header {visibility: hidden;}
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Navigation menu
-selected = option_menu(None, ["Data Entry", "Data Visualization"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
+selected = option_menu(None, ["Data Entry", "Data Visualization", "Search Patients"], icons=["pencil-fill", "bar-chart-fill", "search"], orientation="horizontal")
 
 def format_date(fhir_date):
     if fhir_date is not None and hasattr(fhir_date, 'date'):
@@ -62,10 +62,10 @@ def calculate_age(birthdate):
 def save_patient_to_fhir(patient):
     try:
         result = patient.create(smart.server)
-        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].given[0]} {patient.name[0].family}, Birth Date = {format_date(patient.birthDate)}")
+        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].text}, Birth Date = {format_date(patient.birthDate)}")
         st.success("Patient data saved to FHIR server successfully!")
     except Exception as e:
-        logger.error(f"Failed to save patient: {e}")
+        logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
 def fetch_all_patients():
@@ -73,17 +73,11 @@ def fetch_all_patients():
     results = search.perform_resources(smart.server)
     return results
 
-def delete_patient(patient_id):
-    patient = Patient.read(patient_id, smart.server)
-    try:
-        patient.delete()
-        logger.info(f"Deleted patient {patient_id}")
-        st.success('Patient deleted successfully!')
-    except Exception as e:
-        logger.error(f"Failed to delete patient {patient_id}: {e}")
-        st.error(f"Failed to delete patient: {e}")
+def search_patients_by_name(name):
+    search = Patient.where(struct={'name': name})
+    results = search.perform_resources(smart.server)
+    return results
 
-# Input & Save Patient Information
 if selected == "Data Entry":
     st.header("Data Entry for Patient")
     with st.form("entry_form", clear_on_submit=True):
@@ -106,24 +100,27 @@ if selected == "Data Entry":
             fhir_patient = create_fhir_patient(form_data)
             save_patient_to_fhir(fhir_patient)
 
-# Data Visualization
+if selected == "Search Patients":
+    st.header("Search Patients by Name")
+    name_query = st.text_input("Enter name to search:")
+    if st.button("Search"):
+        result_patients = search_patients_by_name(name_query)
+        for patient in result_patients:
+            birth_date = format_date(patient.birthDate)
+            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
+
 if selected == "Data Visualization":
     st.header("Patient Information Visualization")
     refresh = st.button("Refresh Data")
     if refresh or not st.session_state.get('fetched', False):
         all_patients = fetch_all_patients()
-        st.session_state['fetched'] = True  # Mark as fetched
+        st.session_state['fetched'] = True
     else:
         all_patients = st.session_state.get('all_patients', [])
-    
+
     if all_patients:
-        st.session_state['all_patients'] = all_patients  # Store in session state for later retrieval without refetching
         for patient in all_patients:
             birth_date = format_date(patient.birthDate)
             st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
-            if st.button(f'Delete {patient.id}', key=f"delete_{patient.id}"):
-                delete_patient(patient.id)
-                all_patients = fetch_all_patients()  # Refresh list after deletion
-                st.session_state['all_patients'] = all_patients
     else:
         st.write("No patients found.")
