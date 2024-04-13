@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
-from datetime import datetime
+from datetime import datetime, date
 import calendar
 from fhirclient import client
 from fhirclient.models.patient import Patient
@@ -8,8 +8,9 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
 import logging
 
-# Enhanced logging configuration
+# Ensure logs are visible in the console
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
+logger = logging.getLogger(__name__)
 
 # FHIR Server Configuration
 settings = {
@@ -22,9 +23,10 @@ smart = client.FHIRClient(settings=settings)
 st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
 st.title("Patient Information Tracker :hospital:")
 
-# Dropdown values for selecting the period
+# Dropdown values for selecting the date
 years = [datetime.today().year - i for i in range(100)]
 months = list(calendar.month_name[1:])
+days = list(range(1, 32))  # Assuming all months have up to 31 days
 
 # Hide Streamlit style
 hide_st_style = """
@@ -50,8 +52,12 @@ def create_fhir_patient(form_data):
     name.family = form_data['Name'].split()[-1]  # Family name is typically the last name
     name.given = [form_data['Name'].split()[0]]  # Given name is typically the first name
     patient.name = [name]
-    patient.birthDate = FHIRDate(datetime.strptime(f"{form_data['year']}-{form_data['month']}-01", "%Y-%B-%d").date().isoformat())
+    patient.birthDate = FHIRDate(form_data['BirthDate'])
     return patient
+
+def calculate_age(birthdate):
+    today = date.today()
+    return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
 
 def save_patient_to_fhir(patient):
     try:
@@ -81,22 +87,21 @@ def delete_patient(patient_id):
 if selected == "Data Entry":
     st.header("Data Entry for Patient")
     with st.form("entry_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        col1.selectbox("Select Birth Month:", months, index=0, key="month")
-        col2.selectbox("Select Birth Year:", years, index=0, key="year")
-
-        with st.expander("Patient Information"):
-            patient_name = st.text_input("Name:")
-            patient_age = st.number_input("Age:", min_value=0, max_value=120)
-            patient_diagnosis = st.text_input("Diagnosis:")
+        col1, col2, col3 = st.columns(3)
+        day = col1.selectbox("Select Birth Day:", days, index=0)
+        month = col2.selectbox("Select Birth Month:", months, index=0)
+        year = col3.selectbox("Select Birth Year:", years, index=0)
+        patient_name = st.text_input("Name:")
+        patient_diagnosis = st.text_input("Diagnosis:")
+        birth_date = datetime(year, months.index(month) + 1, day)
+        age = calculate_age(birth_date)
+        st.text(f"Calculated Age: {age}")
 
         if st.form_submit_button("Save Data"):
             form_data = {
                 'Name': patient_name,
-                'Age': patient_age,
                 'Diagnosis': patient_diagnosis,
-                'year': st.session_state['year'],
-                'month': st.session_state['month']
+                'BirthDate': birth_date.isoformat()
             }
             fhir_patient = create_fhir_patient(form_data)
             save_patient_to_fhir(fhir_patient)
