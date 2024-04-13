@@ -55,10 +55,6 @@ SkinWise serves as a powerful tool for healthcare professionals, enabling them t
 </div>
 """, unsafe_allow_html=True)
 
-# Separator line
-# st.markdown('<hr class="separator">', unsafe_allow_html=True)
-
-
 st.title("Patient Information Tracker :hospital:")
 
 # Dropdown values for selecting the date
