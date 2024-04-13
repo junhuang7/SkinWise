@@ -109,12 +109,21 @@ if selected == "Data Entry":
 # Data Visualization
 if selected == "Data Visualization":
     st.header("Patient Information Visualization")
-    all_patients = fetch_all_patients()
+    refresh = st.button("Refresh Data")
+    if refresh or not st.session_state.get('fetched', False):
+        all_patients = fetch_all_patients()
+        st.session_state['fetched'] = True  # Mark as fetched
+    else:
+        all_patients = st.session_state.get('all_patients', [])
+    
     if all_patients:
+        st.session_state['all_patients'] = all_patients  # Store in session state for later retrieval without refetching
         for patient in all_patients:
             birth_date = format_date(patient.birthDate)
             st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
-            if st.button('Delete', key=patient.id):
+            if st.button(f'Delete {patient.id}', key=f"delete_{patient.id}"):
                 delete_patient(patient.id)
+                all_patients = fetch_all_patients()  # Refresh list after deletion
+                st.session_state['all_patients'] = all_patients
     else:
         st.write("No patients found.")
