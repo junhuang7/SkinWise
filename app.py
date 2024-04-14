@@ -39,7 +39,7 @@ header {visibility: hidden;}
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Menu options
-selected = option_menu(None, ["Data Entry", "Data Visualization", "Search Patients"], icons=["pencil-fill", "bar-chart-fill", "search"], orientation="horizontal")
+selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
 
 def format_date(fhir_date):
     if fhir_date is not None and hasattr(fhir_date, 'date'):
@@ -106,7 +106,7 @@ if selected == "Data Entry":
             fhir_patient = create_fhir_patient(form_data)
             save_patient_to_fhir(fhir_patient)
 
-if selected == "Data Visualization":
+if selected == "Patients":
     st.header("Patient Information Visualization")
     page_number = st.number_input("Select page number", min_value=1, value=1, step=1)
     if st.button("Fetch Patients"):
