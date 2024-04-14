@@ -8,7 +8,7 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
 import logging
 
-# Ensure logs are visible in the console
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 logger = logging.getLogger(__name__)
 
@@ -19,16 +19,16 @@ settings = {
 }
 smart = client.FHIRClient(settings=settings)
 
-# Application settings and layouts
+# Streamlit page setup
 st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
 st.title("Patient Information Tracker 🏥")
 
-# Dropdown values for selecting the date
+# Time handling
 years = [datetime.today().year - i for i in range(100)]
 months = list(calendar.month_name[1:])
 days = list(range(1, 32))
 
-# Hide Streamlit style
+# UI style
 hide_st_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -38,7 +38,7 @@ header {visibility: hidden;}
 """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# Navigation menu
+# Menu options
 selected = option_menu(None, ["Data Entry", "Data Visualization", "Search Patients"], icons=["pencil-fill", "bar-chart-fill", "search"], orientation="horizontal")
 
 def format_date(fhir_date):
@@ -68,25 +68,11 @@ def save_patient_to_fhir(patient):
         logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
-def fetch_latest_patients(limit=100):
-    try:
-        search = Patient.where({'_count': str(limit)})
-        search.params['_sort'] = '-_lastUpdated'
-        results = search.perform_resources(smart.server)
-        logger.info(f"Fetched {len(results)} patients.")
-        return results
-    except Exception as e:
-        logger.error("Failed to fetch patients: {}".format(e), exc_info=True)
-        return []
-
-def fetch_patient_details(patient_id):
-    try:
-        result = smart.server.operation('Patient', patient_id, '$everything', method='GET', use_get=True)
-        logger.info("Successfully fetched patient details using $everything.")
-        return result.as_json()
-    except Exception as e:
-        logger.error(f"Failed to retrieve patient details for ID {patient_id}: {e}", exc_info=True)
-        return None
+def fetch_patients(page):
+    """Fetch patients with pagination."""
+    search = Patient.where({'_count': '100', '_page': str(page)})
+    results = search.perform_resources(smart.server)
+    return results
 
 def search_patients_by_name(name):
     try:
@@ -122,40 +108,12 @@ if selected == "Data Entry":
 
 if selected == "Data Visualization":
     st.header("Patient Information Visualization")
-    patient_id_input = st.text_input("Enter Patient ID to fetch all details (using $everything):")
-    
-    if st.button("Fetch Patient Details"):
-        if patient_id_input:
-            patient_details = fetch_patient_details(patient_id_input)
-            if patient_details:
-                st.json(patient_details)  # Displaying the JSON result directly
-                st.success("Data fetched successfully!")
-            else:
-                st.error("Failed to fetch data or no data available for this patient.")
+    page_number = st.number_input("Select page number", min_value=1, value=1, step=1)
+    if st.button("Fetch Patients"):
+        patients = fetch_patients(page_number)
+        if patients:
+            for patient in patients:
+                birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+                st.text(f"Patient ID: {patient.id}, Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
         else:
-            st.error("Please enter a valid Patient ID.")
-
-    st.write("----")
-    refresh = st.button("Refresh Latest Patients")
-    if refresh or not st.session_state.get('fetched', False):
-        all_patients = fetch_latest_patients()
-        st.session_state['fetched'] = True
-        st.session_state['all_patients'] = all_patients
-    else:
-        all_patients = st.session_state.get('all_patients', [])
-
-    if all_patients:
-        selected_patients = st.multiselect("Select patients to delete (by ID):", 
-                                           [(p.id, f"{p.name[0].given[0]} {p.name[0].family}") for p in all_patients],
-                                           format_func=lambda x: x[1])
-        if st.button("Delete Selected Patients"):
-            for patient_id, _ in selected_patients:
-                delete_patient(patient_id)
-            st.success(f"Deleted {len(selected_patients)} patients.")
-            all_patients = fetch_latest_patients()
-            st.session_state['all_patients'] = all_patients
-        for patient in all_patients:
-            birth_date = format_date(patient.birthDate)
-            st.text(f"Patient ID: {patient.id}, Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
-    else:
-        st.write("No patients found.")
+            st.write("No patients found or failed to fetch patients.")
