@@ -26,7 +26,7 @@ st.title("Patient Information Tracker 🏥")
 # Dropdown values for selecting the date
 years = [datetime.today().year - i for i in range(100)]
 months = list(calendar.month_name[1:])
-days = list(range(1, 32))  # Assuming all months have up to 31 days
+days = list(range(1, 32))
 
 # Hide Streamlit style
 hide_st_style = """
@@ -62,14 +62,14 @@ def calculate_age(birthdate):
 def save_patient_to_fhir(patient):
     try:
         result = patient.create(smart.server)
-        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {patient.name[0].text}, Birth Date = {format_date(patient.birthDate)}")
+        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {result.name[0].text}, Birth Date = {format_date(patient.birthDate)}")
         st.success("Patient data saved to FHIR server successfully!")
     except Exception as e:
         logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
-def fetch_all_patients():
-    search = Patient.where(struct={})
+def fetch_latest_patients(limit=100):
+    search = Patient.where(struct={}).sort("-_lastUpdated").limit(limit)
     results = search.perform_resources(smart.server)
     return results
 
@@ -113,14 +113,23 @@ if selected == "Data Visualization":
     st.header("Patient Information Visualization")
     refresh = st.button("Refresh Data")
     if refresh or not st.session_state.get('fetched', False):
-        all_patients = fetch_all_patients()
+        all_patients = fetch_latest_patients()
         st.session_state['fetched'] = True
     else:
         all_patients = st.session_state.get('all_patients', [])
 
     if all_patients:
+        selected_patients = st.multiselect("Select patients to delete (by ID):", 
+                                           options=[(p.id, f"{p.name[0].given[0]} {p.name[0].family}") for p in all_patients],
+                                           format_func=lambda x: x[1])
+        if st.button("Delete Selected Patients"):
+            for patient_id, _ in selected_patients:
+                delete_patient(patient_id)
+            st.success(f"Deleted {len(selected_patients)} patients.")
+            all_patients = fetch_latest_patients()  # Refresh the list
+            st.session_state['all_patients'] = all_patients
         for patient in all_patients:
             birth_date = format_date(patient.birthDate)
-            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
+            st.text(f"Patient ID: {patient.id}, Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
     else:
         st.write("No patients found.")
