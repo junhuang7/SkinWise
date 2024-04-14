@@ -101,6 +101,26 @@ def delete_patient_from_fhir(patient_id):
         logger.error(f"Failed to delete patient: {e}", exc_info=True)
         st.error(f"Error deleting from FHIR server: {e}")
 
+def update_patient_to_fhir(patient_id, updated_data):
+    try:
+        patient = Patient.read(patient_id, smart.server)
+        if 'First Name' in updated_data:
+            patient.name[0].given = [updated_data['First Name']]
+        if 'Family Name' in updated_data:
+            patient.name[0].family = updated_data['Family Name']
+        if 'BirthDate' in updated_data:
+            patient.birthDate = FHIRDate(updated_data['BirthDate'].split('T')[0])
+        result = patient.update(smart.server)
+        if result:
+            logger.info(f"Patient updated in FHIR server: ID = {patient_id}")
+            st.success(f"Patient with ID {patient_id} updated successfully!")
+        else:
+            logger.error("Failed to update patient")
+            st.error("Error updating patient in FHIR server")
+    except Exception as e:
+        logger.error(f"Failed to update patient: {e}", exc_info=True)
+        st.error(f"Error updating patient: {e}")
+
 # Menu options
 selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
 
@@ -129,11 +149,8 @@ if selected == "Data Entry":
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
-    
-    # Button to trigger data fetching
     fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
 
-    # Use the counter to check for button presses
     if st.session_state['fetch_counter'] > 0:
         with st.spinner('Fetching latest patients...'):
             patients = fetch_patients()
@@ -141,16 +158,29 @@ if selected == "Patients":
             if patients:
                 for patient in patients:
                     patient_id = patient.id if patient.id else "Unknown ID"
-                    col1, col2 = st.columns([6, 1])
-                    if patient.name and patient.birthDate:
-                        given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
-                        family_name = patient.name[0].family if patient.name[0].family else "Unknown"
-                        birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
-                        col1.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
-                    else:
-                        col1.text(f"Patient ID: {patient_id}, Data Incomplete")
-                    col2.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+                    # Initialize session state for each patient if not already present
+                    if f'{patient_id}_given_name' not in st.session_state:
+                        st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
+                    if f'{patient_id}_family_name' not in st.session_state:
+                        st.session_state[f'{patient_id}_family_name'] = patient.name[0].family if patient.name and patient.name[0].family else "Unknown"
+                    if f'{patient_id}_birth_date' not in st.session_state:
+                        st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+
+                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
+                    col1.markdown(f"**Patient ID: {patient_id}**")
+                    col1.text_input("First Name:", key=f'{patient_id}_given_name')
+                    col1.text_input("Family Name:", key=f'{patient_id}_family_name')
+                    col1.text_input("Birth Date (YYYY-MM-DD):", key=f'{patient_id}_birth_date')
+                    
+                    col2.button("Edit", key=f"edit_{patient_id}")
+                    col3.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
+                        'First Name': st.session_state[f'{patient_id}_given_name'],
+                        'Family Name': st.session_state[f'{patient_id}_family_name'],
+                        'BirthDate': st.session_state[f'{patient_id}_birth_date']
+                    }))
+                    col4.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
             else:
                 st.write("No patients found or failed to fetch patients.")
+
 
 
