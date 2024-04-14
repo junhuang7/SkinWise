@@ -116,9 +116,12 @@ if selected == "Patients":
     # Button to trigger data fetching
     fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
 
-    if fetch_button or st.session_state['fetch_clicked']:
+    # Change here: Check if fetch_clicked is True and then toggle it back after fetching to allow re-fetching.
+    if st.session_state['fetch_clicked']:
         with st.spinner('Fetching latest patients...'):
             patients = fetch_patients()
+            # Reset the fetch trigger to allow for re-fetching
+            st.session_state['fetch_clicked'] = False
             if patients:
                 for patient in patients:
                     # Check if the patient has a name and birth date, handle missing data
