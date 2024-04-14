@@ -59,15 +59,22 @@ def calculate_age(birthdate):
 def save_patient_to_fhir(patient):
     try:
         result = patient.create(smart.server)
-        logger.info(f"Patient saved to FHIR server: ID = {result['id']}, Name = {result.name[0].text}, Birth Date = {format_date(patient.birthDate)}")
-        st.success("Patient data saved to FHIR server successfully!")
+        if 'id' in result:
+            patient_id = result['id']
+            patient_name = f"{patient.name[0].given[0]} {patient.name[0].family}" if patient.name else "Name Unknown"
+            patient_birth_date = format_date(patient.birthDate) if patient.birthDate else "Birth Date Unknown"
+            logger.info(f"Patient saved to FHIR server: ID = {patient_id}, Name = {patient_name}, Birth Date = {patient_birth_date}")
+            st.success("Patient data saved to FHIR server successfully!")
+        else:
+            logger.error("Failed to save patient: No ID returned")
+            st.error("Error saving to FHIR server: No ID returned")
     except Exception as e:
         logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
 def fetch_patients():
-    """Fetch the latest 100 patients sorted by creation date, requesting specific fields to improve performance."""
-    search = Patient.where(struct={'_count': '100', '_sort': '-_lastUpdated', '_elements': 'id,name,birthDate'})
+    """Fetch the latest 20 patients sorted by creation date, requesting specific fields to improve performance."""
+    search = Patient.where(struct={'_count': '20', '_sort': '-_lastUpdated', '_elements': 'id,name,birthDate'})
     results = search.perform_resources(smart.server)
     return results
 
