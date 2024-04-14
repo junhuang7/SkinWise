@@ -72,6 +72,13 @@ def save_patient_to_fhir(patient):
         logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
+if 'fetch_clicked' not in st.session_state:
+    st.session_state['fetch_clicked'] = False
+
+def fetch_data():
+    st.session_state['fetch_clicked'] = True
+
+@st.cache_resource(ttl=300)  # Cache for 5 minutes
 def fetch_patients():
     """Fetch the latest 20 patients sorted by creation date, requesting specific fields to improve performance."""
     search = Patient.where(struct={'_count': '20', '_sort': '-_lastUpdated', '_elements': 'id,name,birthDate'})
@@ -105,20 +112,26 @@ if selected == "Data Entry":
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
-    if st.button("Fetch Latest Patients"):
-        patients = fetch_patients()
-        if patients:
-            for patient in patients:
-                # Check if the patient has a name and birth date, handle missing data
-                if patient.name and patient.birthDate:
-                    given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
-                    family_name = patient.name[0].family if patient.name[0].family else "Unknown"
-                    birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
-                    patient_id = patient.id if patient.id else "Unknown ID"
-                    st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
-                else:
-                    # Provide a message for patients with incomplete data
-                    patient_id = patient.id if patient.id else "Unknown ID"
-                    st.text(f"Patient ID: {patient_id}, Data Incomplete")
-        else:
-            st.write("No patients found or failed to fetch patients.")
+    
+    # Button to trigger data fetching
+    fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
+
+    if fetch_button or st.session_state['fetch_clicked']:
+        with st.spinner('Fetching latest patients...'):
+            patients = fetch_patients()
+            if patients:
+                for patient in patients:
+                    # Check if the patient has a name and birth date, handle missing data
+                    if patient.name and patient.birthDate:
+                        given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
+                        family_name = patient.name[0].family if patient.name[0].family else "Unknown"
+                        birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+                        patient_id = patient.id if patient.id else "Unknown ID"
+                        st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
+                    else:
+                        # Provide a message for patients with incomplete data
+                        patient_id = patient.id if patient.id else "Unknown ID"
+                        st.text(f"Patient ID: {patient_id}, Data Incomplete")
+            else:
+                st.write("No patients found or failed to fetch patients.")
+
