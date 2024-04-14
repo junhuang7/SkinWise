@@ -87,6 +87,20 @@ def fetch_patients():
     results = search.perform_resources(smart.server)
     return results
 
+def delete_patient_from_fhir(patient_id):
+    try:
+        patient = Patient.read(patient_id, smart.server)
+        result = patient.delete(smart.server)
+        if result:
+            logger.info(f"Patient deleted from FHIR server: ID = {patient_id}")
+            st.success(f"Patient with ID {patient_id} deleted successfully!")
+        else:
+            logger.error("Failed to delete patient")
+            st.error("Error deleting patient from FHIR server")
+    except Exception as e:
+        logger.error(f"Failed to delete patient: {e}", exc_info=True)
+        st.error(f"Error deleting from FHIR server: {e}")
+
 # Menu options
 selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
 
@@ -131,7 +145,9 @@ if selected == "Patients":
                         family_name = patient.name[0].family if patient.name[0].family else "Unknown"
                         birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
                         patient_id = patient.id if patient.id else "Unknown ID"
-                        st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
+                        col1, col2 = st.columns([3, 1])
+                        col1.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
+                        col2.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
                     else:
                         patient_id = patient.id if patient.id else "Unknown ID"
                         st.text(f"Patient ID: {patient_id}, Data Incomplete")
