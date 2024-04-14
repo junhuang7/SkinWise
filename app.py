@@ -1,7 +1,6 @@
 import streamlit as st
-import pandas as pd
 from streamlit_option_menu import option_menu
-from datetime import datetime, date
+from datetime import datetime
 import calendar
 from fhirclient import client
 from fhirclient.models.patient import Patient
