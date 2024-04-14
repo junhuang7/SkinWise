@@ -69,14 +69,34 @@ def save_patient_to_fhir(patient):
         st.error(f"Error saving to FHIR server: {e}")
 
 def fetch_latest_patients(limit=100):
-    search = Patient.where(struct={}).sort("-_lastUpdated").limit(limit)
-    results = search.perform_resources(smart.server)
-    return results
+    try:
+        search = Patient.where({'_count': str(limit)})
+        search.params['_sort'] = '-_lastUpdated'
+        results = search.perform_resources(smart.server)
+        logger.info(f"Fetched {len(results)} patients.")
+        return results
+    except Exception as e:
+        logger.error("Failed to fetch patients: {}".format(e), exc_info=True)
+        return []
+
+def fetch_patient_details(patient_id):
+    try:
+        result = smart.server.operation('Patient', patient_id, '$everything', method='GET', use_get=True)
+        logger.info("Successfully fetched patient details using $everything.")
+        return result.as_json()
+    except Exception as e:
+        logger.error(f"Failed to retrieve patient details for ID {patient_id}: {e}", exc_info=True)
+        return None
 
 def search_patients_by_name(name):
-    search = Patient.where(struct={'name': name})
-    results = search.perform_resources(smart.server)
-    return results
+    try:
+        search = Patient.where(struct={'name': name})
+        results = search.perform_resources(smart.server)
+        logger.info(f"Found {len(results)} patients by name search.")
+        return results
+    except Exception as e:
+        logger.error(f"Failed to search patients by name: {e}", exc_info=True)
+        return []
 
 if selected == "Data Entry":
     st.header("Data Entry for Patient")
@@ -100,33 +120,39 @@ if selected == "Data Entry":
             fhir_patient = create_fhir_patient(form_data)
             save_patient_to_fhir(fhir_patient)
 
-if selected == "Search Patients":
-    st.header("Search Patients by Name")
-    name_query = st.text_input("Enter name to search:")
-    if st.button("Search"):
-        result_patients = search_patients_by_name(name_query)
-        for patient in result_patients:
-            birth_date = format_date(patient.birthDate)
-            st.text(f"Patient Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
-
 if selected == "Data Visualization":
     st.header("Patient Information Visualization")
-    refresh = st.button("Refresh Data")
+    patient_id_input = st.text_input("Enter Patient ID to fetch all details (using $everything):")
+    
+    if st.button("Fetch Patient Details"):
+        if patient_id_input:
+            patient_details = fetch_patient_details(patient_id_input)
+            if patient_details:
+                st.json(patient_details)  # Displaying the JSON result directly
+                st.success("Data fetched successfully!")
+            else:
+                st.error("Failed to fetch data or no data available for this patient.")
+        else:
+            st.error("Please enter a valid Patient ID.")
+
+    st.write("----")
+    refresh = st.button("Refresh Latest Patients")
     if refresh or not st.session_state.get('fetched', False):
         all_patients = fetch_latest_patients()
         st.session_state['fetched'] = True
+        st.session_state['all_patients'] = all_patients
     else:
         all_patients = st.session_state.get('all_patients', [])
 
     if all_patients:
         selected_patients = st.multiselect("Select patients to delete (by ID):", 
-                                           options=[(p.id, f"{p.name[0].given[0]} {p.name[0].family}") for p in all_patients],
+                                           [(p.id, f"{p.name[0].given[0]} {p.name[0].family}") for p in all_patients],
                                            format_func=lambda x: x[1])
         if st.button("Delete Selected Patients"):
             for patient_id, _ in selected_patients:
                 delete_patient(patient_id)
             st.success(f"Deleted {len(selected_patients)} patients.")
-            all_patients = fetch_latest_patients()  # Refresh the list
+            all_patients = fetch_latest_patients()
             st.session_state['all_patients'] = all_patients
         for patient in all_patients:
             birth_date = format_date(patient.birthDate)
