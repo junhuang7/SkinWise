@@ -74,7 +74,8 @@ if 'fetch_clicked' not in st.session_state:
     st.session_state['fetch_clicked'] = False
 
 def fetch_data():
-    st.session_state['fetch_clicked'] = True
+    # Toggle the fetch_clicked state to force a rerun each time the button is pressed.
+    st.session_state['fetch_clicked'] = not st.session_state['fetch_clicked']
 
 @st.cache_resource(ttl=300)  # Cache for 5 minutes
 def fetch_patients():
