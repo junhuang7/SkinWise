@@ -80,7 +80,7 @@ def fetch_data():
     # Increment the counter to trigger a rerun
     st.session_state['fetch_counter'] += 1
 
-@st.cache_resource(ttl=300)  # Cache for 5 minutes
+#@st.cache_resource(ttl=300)  # Cache for 5 minutes
 def fetch_patients():
     """Fetch the latest 20 patients sorted by creation date, requesting specific fields to improve performance."""
     search = Patient.where(struct={'_count': '20', '_sort': '-_lastUpdated', '_elements': 'id,name,birthDate'})
