@@ -40,17 +40,20 @@ months = list(calendar.month_name[1:])
 days = list(range(1, 32))
 
 def format_date(fhir_date):
+    # Format the date to exclude time component.
     if fhir_date is not None and hasattr(fhir_date, 'date'):
-        return fhir_date.date.isoformat()
+        return fhir_date.date.strftime('%Y-%m-%d')
     return "No date available"
 
 def create_fhir_patient(form_data):
     patient = Patient()
     name = humanname.HumanName()
-    name.family = form_data['Name'].split()[-1]
-    name.given = [form_data['Name'].split()[0]]
+    # Assume the first word is the given name and the rest is the family name
+    name_parts = form_data['Name'].split()
+    name.given = [name_parts[0]]
+    name.family = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
     patient.name = [name]
-    patient.birthDate = FHIRDate(form_data['BirthDate'])
+    patient.birthDate = FHIRDate(form_data['BirthDate'].split('T')[0])  # Split and use only the date part
     return patient
 
 def save_patient_to_fhir(patient):
