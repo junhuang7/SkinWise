@@ -48,12 +48,10 @@ def format_date(fhir_date):
 def create_fhir_patient(form_data):
     patient = Patient()
     name = humanname.HumanName()
-    # Assume the first word is the given name and the rest is the family name
-    name_parts = form_data['Name'].split()
-    name.given = [name_parts[0]]
-    name.family = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+    name.given = [form_data['First Name']]
+    name.family = form_data['Family Name']
     patient.name = [name]
-    patient.birthDate = FHIRDate(form_data['BirthDate'].split('T')[0])  # Split and use only the date part
+    patient.birthDate = FHIRDate(form_data['BirthDate'].split('T')[0])  # Use only the date part
     return patient
 
 def save_patient_to_fhir(patient):
@@ -95,13 +93,16 @@ if selected == "Data Entry":
         day = col1.selectbox("Select Birth Day:", days, index=0)
         month = col2.selectbox("Select Birth Month:", months, index=0)
         year = col3.selectbox("Select Birth Year:", years, index=0)
-        patient_name = st.text_input("Name:")
+        col1, col2 = st.columns(2)
+        first_name = col1.text_input("First Name:")
+        family_name = col2.text_input("Family Name:")
         patient_diagnosis = st.text_input("Diagnosis:")
         birth_date = datetime(year, months.index(month) + 1, day)
 
         if st.form_submit_button("Save Data"):
             form_data = {
-                'Name': patient_name,
+                'First Name': first_name,
+                'Family Name': family_name,
                 'Diagnosis': patient_diagnosis,
                 'BirthDate': birth_date.isoformat()
             }
