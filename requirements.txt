@@ -3,3 +3,5 @@ streamlit==1.32.2
 streamlit_option_menu==0.3.12
 plotly==5.20.0
 sqlalchemy==2.0.29
+pandas==2.2.1
+fhirclient==4.1.0
