@@ -23,11 +23,6 @@ smart = client.FHIRClient(settings=settings)
 st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
 st.title("Patient Information Tracker 🏥")
 
-# Time handling
-years = [datetime.today().year - i for i in range(100)]
-months = list(calendar.month_name[1:])
-days = list(range(1, 32))
-
 # UI style
 hide_st_style = """
 <style>
@@ -38,8 +33,10 @@ header {visibility: hidden;}
 """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# Menu options
-selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
+# Time handling
+years = [datetime.today().year - i for i in range(100)]
+months = list(calendar.month_name[1:])
+days = list(range(1, 32))
 
 def format_date(fhir_date):
     if fhir_date is not None and hasattr(fhir_date, 'date'):
@@ -68,21 +65,14 @@ def save_patient_to_fhir(patient):
         logger.error(f"Failed to save patient: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
-def fetch_patients(page):
-    """Fetch patients with pagination."""
-    search = Patient.where({'_count': '100', '_page': str(page)})
+def fetch_patients():
+    """Fetch the latest 100 patients sorted by creation date, requesting specific fields to improve performance."""
+    search = Patient.where(struct={'_count': '100', '_sort': '-_lastUpdated', '_elements': 'id,name,birthDate'})
     results = search.perform_resources(smart.server)
     return results
 
-def search_patients_by_name(name):
-    try:
-        search = Patient.where(struct={'name': name})
-        results = search.perform_resources(smart.server)
-        logger.info(f"Found {len(results)} patients by name search.")
-        return results
-    except Exception as e:
-        logger.error(f"Failed to search patients by name: {e}", exc_info=True)
-        return []
+# Menu options
+selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
 
 if selected == "Data Entry":
     st.header("Data Entry for Patient")
@@ -108,12 +98,20 @@ if selected == "Data Entry":
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
-    page_number = st.number_input("Select page number", min_value=1, value=1, step=1)
-    if st.button("Fetch Patients"):
-        patients = fetch_patients(page_number)
+    if st.button("Fetch Latest Patients"):
+        patients = fetch_patients()
         if patients:
             for patient in patients:
-                birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
-                st.text(f"Patient ID: {patient.id}, Name: {patient.name[0].given[0]} {patient.name[0].family}, Birth Date: {birth_date}")
+                # Check if the patient has a name and birth date, handle missing data
+                if patient.name and patient.birthDate:
+                    given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
+                    family_name = patient.name[0].family if patient.name[0].family else "Unknown"
+                    birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+                    patient_id = patient.id if patient.id else "Unknown ID"
+                    st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
+                else:
+                    # Provide a message for patients with incomplete data
+                    patient_id = patient.id if patient.id else "Unknown ID"
+                    st.text(f"Patient ID: {patient_id}, Data Incomplete")
         else:
             st.write("No patients found or failed to fetch patients.")
