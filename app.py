@@ -73,9 +73,12 @@ def save_patient_to_fhir(patient):
 if 'fetch_clicked' not in st.session_state:
     st.session_state['fetch_clicked'] = False
 
+if 'fetch_counter' not in st.session_state:
+    st.session_state['fetch_counter'] = 0
+
 def fetch_data():
-    # Toggle the fetch_clicked state to force a rerun each time the button is pressed.
-    st.session_state['fetch_clicked'] = not st.session_state['fetch_clicked']
+    # Increment the counter to trigger a rerun
+    st.session_state['fetch_counter'] += 1
 
 @st.cache_resource(ttl=300)  # Cache for 5 minutes
 def fetch_patients():
@@ -116,15 +119,13 @@ if selected == "Patients":
     # Button to trigger data fetching
     fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
 
-    # Change here: Check if fetch_clicked is True and then toggle it back after fetching to allow re-fetching.
-    if st.session_state['fetch_clicked']:
+    # Use the counter to check for button presses
+    if st.session_state['fetch_counter'] > 0:
         with st.spinner('Fetching latest patients...'):
             patients = fetch_patients()
-            # Reset the fetch trigger to allow for re-fetching
-            st.session_state['fetch_clicked'] = False
+            
             if patients:
                 for patient in patients:
-                    # Check if the patient has a name and birth date, handle missing data
                     if patient.name and patient.birthDate:
                         given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
                         family_name = patient.name[0].family if patient.name[0].family else "Unknown"
@@ -132,7 +133,6 @@ if selected == "Patients":
                         patient_id = patient.id if patient.id else "Unknown ID"
                         st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
                     else:
-                        # Provide a message for patients with incomplete data
                         patient_id = patient.id if patient.id else "Unknown ID"
                         st.text(f"Patient ID: {patient_id}, Data Incomplete")
             else:
