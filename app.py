@@ -141,7 +141,7 @@ if selected == "Patients":
             if patients:
                 for patient in patients:
                     patient_id = patient.id if patient.id else "Unknown ID"
-                    col1, col2 = st.columns([3, 1])
+                    col1, col2 = st.columns([6, 1])
                     if patient.name and patient.birthDate:
                         given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
                         family_name = patient.name[0].family if patient.name[0].family else "Unknown"
