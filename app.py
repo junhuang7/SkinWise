@@ -140,17 +140,17 @@ if selected == "Patients":
             
             if patients:
                 for patient in patients:
+                    patient_id = patient.id if patient.id else "Unknown ID"
+                    col1, col2 = st.columns([3, 1])
                     if patient.name and patient.birthDate:
                         given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
                         family_name = patient.name[0].family if patient.name[0].family else "Unknown"
                         birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
-                        patient_id = patient.id if patient.id else "Unknown ID"
-                        col1, col2 = st.columns([3, 1])
                         col1.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
-                        col2.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
                     else:
-                        patient_id = patient.id if patient.id else "Unknown ID"
-                        st.text(f"Patient ID: {patient_id}, Data Incomplete")
+                        col1.text(f"Patient ID: {patient_id}, Data Incomplete")
+                    col2.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
             else:
                 st.write("No patients found or failed to fetch patients.")
+
 
