@@ -53,10 +53,6 @@ def create_fhir_patient(form_data):
     patient.birthDate = FHIRDate(form_data['BirthDate'])
     return patient
 
-def calculate_age(birthdate):
-    today = date.today()
-    return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-
 def save_patient_to_fhir(patient):
     try:
         result = patient.create(smart.server)
@@ -86,35 +82,6 @@ def fetch_patients():
     results = search.perform_resources(smart.server)
     return results
 
-def delete_patient(patient_id):
-    """Deletes a patient from the FHIR server."""
-    try:
-        patient = Patient.read(patient_id, smart.server)
-        patient.delete()
-        fetch_data()  # Refresh data
-        st.success("Patient deleted successfully.")
-    except Exception as e:
-        st.error("Failed to delete patient.")
-
-def display_patients():
-    """Displays patients in a table with a delete button."""
-    patients = fetch_patients()
-    if patients:
-        data = []
-        for patient in patients:
-            data.append({
-                "ID": patient.id,
-                "Name": f"{patient.name[0].given[0]} {patient.name[0].family}" if patient.name else "Unknown",
-                "Birth Date": format_date(patient.birthDate) if patient.birthDate else "Unknown",
-            })
-        df = pd.DataFrame(data)
-        st.table(df.style.apply(lambda x: ['background-color: #2F4F4F' if i % 2 == 0 else 'background-color: #36454F' for i in range(len(x))], axis=1))
-        for patient in patients:
-            if st.button(f"Delete {patient.id}"):
-                delete_patient(patient.id)
-    else:
-        st.write("No patients found.")
-
 # Menu options
 selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "bar-chart-fill"], orientation="horizontal")
 
@@ -128,8 +95,6 @@ if selected == "Data Entry":
         patient_name = st.text_input("Name:")
         patient_diagnosis = st.text_input("Diagnosis:")
         birth_date = datetime(year, months.index(month) + 1, day)
-        age = calculate_age(birth_date)
-        st.text(f"Calculated Age: {age}")
 
         if st.form_submit_button("Save Data"):
             form_data = {
@@ -142,5 +107,26 @@ if selected == "Data Entry":
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
-    if st.button('Fetch Latest Patients', on_click=fetch_data):
-        display_patients()
+    
+    # Button to trigger data fetching
+    fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
+
+    if fetch_button or st.session_state['fetch_clicked']:
+        with st.spinner('Fetching latest patients...'):
+            patients = fetch_patients()
+            if patients:
+                for patient in patients:
+                    # Check if the patient has a name and birth date, handle missing data
+                    if patient.name and patient.birthDate:
+                        given_name = patient.name[0].given[0] if patient.name[0].given else "Unknown"
+                        family_name = patient.name[0].family if patient.name[0].family else "Unknown"
+                        birth_date = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+                        patient_id = patient.id if patient.id else "Unknown ID"
+                        st.text(f"Patient ID: {patient_id}, Name: {given_name} {family_name}, Birth Date: {birth_date}")
+                    else:
+                        # Provide a message for patients with incomplete data
+                        patient_id = patient.id if patient.id else "Unknown ID"
+                        st.text(f"Patient ID: {patient_id}, Data Incomplete")
+            else:
+                st.write("No patients found or failed to fetch patients.")
+
