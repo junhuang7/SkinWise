@@ -4,10 +4,11 @@ FROM python:3.12-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies for general use and OpenCV
+# Install system dependencies for OpenCV and general operation
 RUN apt-get update && \
     apt-get install -y \
     libgl1-mesa-glx \
+    libglib2.0-0 \  # This package contains the missing library
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the dependencies file to the working directory
