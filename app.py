@@ -8,6 +8,51 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
 import logging
 
+from flask import Flask, request
+import socket
+import numpy as np
+import io
+import cv2
+import json
+import base64
+import os
+#custom
+# from custom.credentials import token, account
+from custom.essentials import stringToRGB, get_model
+# from custom.whatsapp import whatsapp_message
+
+from validation import input_validation
+import re
+from io import StringIO
+
+def disease_detect(result_img):
+    model_name = 'Model/best_model.h5'
+    model = get_model()
+    model.load_weights(model_name)
+    classes = {4: ('nv', ' melanocytic nevi'), 6: ('mel', 'melanoma'), 2: ('bkl', 'benign keratosis-like lesions'),
+               1: ('bcc', ' basal cell carcinoma'), 5: ('vasc', ' pyogenic granulomas and hemorrhage'),
+               0: ('akiec', 'Actinic keratoses and intraepithelial carcinomae'), 3: ('df', 'dermatofibroma')}
+    img = cv2.resize(result_img, (28, 28))
+    result = model.predict(img.reshape(1, 28, 28, 3))
+    result = result[0]
+    max_prob = max(result)
+
+    if max_prob > 0.80:
+        class_ind = list(result).index(max_prob)
+        class_name = classes[class_ind]
+        # short_name = class_name[0]
+        full_name = class_name[1]
+    else:
+        full_name = 'No Disease'  # if confidence is less than 80 percent then "No disease"
+
+    # send message
+    message = '''
+       Disease Name : {}
+       Confidence: {}
+
+       '''.format(full_name, max_prob)
+    return message
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 logger = logging.getLogger(__name__)
@@ -21,6 +66,35 @@ smart = client.FHIRClient(settings=settings)
 
 # Streamlit page setup
 st.set_page_config(page_title="Patient Information Tracker", page_icon=":hospital:", layout="centered")
+st.write(""" 
+<style> 
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap'); 
+    .welcome-message { 
+        font-family: 'Roboto', sans-serif; 
+        font-weight: 100; /* Specify Roboto Thin */ 
+        font-size: 16px; 
+        padding: 20px; 
+        border-radius: 10px; 
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+        color: white; /* White text */ 
+    } 
+    .separator { 
+        border-top: 2px solid white; /* White separator line */ 
+        margin-top: 20px; /* Add some space between the welcome message and the separator */ 
+        margin-bottom: 20px; /* Add some space between the separator and the content below */ 
+    } 
+</style> 
+""", unsafe_allow_html=True) 
+ 
+# Display the welcome message in an information box 
+st.markdown(""" 
+<div class="welcome-message"> 
+ 
+### SkinWise: Web-based Diagnostic Tool 
+SkinWise serves as a powerful tool for healthcare professionals, enabling them to effectively manage patient cases and detect skin cancers with precision. 
+ 
+</div> 
+""", unsafe_allow_html=True) 
 st.title("Patient Information Tracker 🏥")
 
 # UI style
@@ -125,6 +199,8 @@ selected = option_menu(None, ["Data Entry", "Patients"], icons=["pencil-fill", "
 
 if selected == "Data Entry":
     st.header("Data Entry for Patient")
+
+    # Interface A
     with st.form("entry_form", clear_on_submit=True):
         col1, col2, col3 = st.columns(3)
         day = col1.selectbox("Select Birth Day:", days, index=0)
@@ -145,6 +221,36 @@ if selected == "Data Entry":
             }
             fhir_patient = create_fhir_patient(form_data)
             save_patient_to_fhir(fhir_patient)
+
+    # Interface B
+    with st.form("boolq form"):
+        label = 'choose a image file'
+        uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False, key=None, help=None,
+                                         on_change=None,
+                                         args=None, kwargs=None)
+
+        if st.form_submit_button("Get Answer"):
+            input_validation(uploaded_file)
+
+            file_name = uploaded_file.name
+            file_extension = os.path.splitext(file_name)[1]
+
+            if file_extension in ['.jpg', '.jpeg', '.png']:
+                bytes_data = uploaded_file.getvalue()
+
+                with open(f'test_images/temp.{file_extension}', 'wb') as f:
+                    f.write(bytes_data)
+
+                result_img = cv2.imread(f'test_images/temp.{file_extension}')
+                result = disease_detect(result_img)
+                st.success(result)
+
+            else:
+                st.error('File must be one of .png, .jpg or .jpeg')
+                st.stop()
+
+
+
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
