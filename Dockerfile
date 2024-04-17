@@ -8,8 +8,8 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y \
     libgl1-mesa-glx \
-    libglib2.0-0 \  # This package contains the missing library
-    && rm -rf /var/lib/apt/lists/*
+    libglib2.0-0 && \  # Ensure this line doesn't end with a comment
+    rm -rf /var/lib/apt/lists/*
 
 # Copy the dependencies file to the working directory
 COPY requirements.txt .
