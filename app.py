@@ -25,6 +25,36 @@ from validation import input_validation
 import re
 from io import StringIO
 
+def disease_detect(result_img, patient_name, patient_contact_number, doctor_name, doctor_contact_number):
+    model_name = 'Model/best_model.h5'
+    model = get_model()
+    model.load_weights(model_name)
+    classes = {4: ('nv', ' melanocytic nevi'), 6: ('mel', 'melanoma'), 2: ('bkl', 'benign keratosis-like lesions'),
+               1: ('bcc', ' basal cell carcinoma'), 5: ('vasc', ' pyogenic granulomas and hemorrhage'),
+               0: ('akiec', 'Actinic keratoses and intraepithelial carcinomae'), 3: ('df', 'dermatofibroma')}
+    img = cv2.resize(result_img, (28, 28))
+    result = model.predict(img.reshape(1, 28, 28, 3))
+    result = result[0]
+    max_prob = max(result)
+
+    if max_prob > 0.80:
+        class_ind = list(result).index(max_prob)
+        class_name = classes[class_ind]
+        # short_name = class_name[0]
+        full_name = class_name[1]
+    else:
+        full_name = 'No Disease'  # if confidence is less than 80 percent then "No disease"
+
+    # send message
+    message = '''
+       Patient Name: {}
+       Doctor Name: {}
+       Disease Name : {}
+       Confidence: {}
+
+       '''.format(patient_name, doctor_name, full_name, max_prob)
+    return message
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 logger = logging.getLogger(__name__)
@@ -198,35 +228,7 @@ if selected == "Data Entry":
                 st.stop()
 
 
-def disease_detect(result_img, patient_name, patient_contact_number, doctor_name, doctor_contact_number):
-    model_name = 'Model/best_model.h5'
-    model = get_model()
-    model.load_weights(model_name)
-    classes = {4: ('nv', ' melanocytic nevi'), 6: ('mel', 'melanoma'), 2: ('bkl', 'benign keratosis-like lesions'),
-               1: ('bcc', ' basal cell carcinoma'), 5: ('vasc', ' pyogenic granulomas and hemorrhage'),
-               0: ('akiec', 'Actinic keratoses and intraepithelial carcinomae'), 3: ('df', 'dermatofibroma')}
-    img = cv2.resize(result_img, (28, 28))
-    result = model.predict(img.reshape(1, 28, 28, 3))
-    result = result[0]
-    max_prob = max(result)
 
-    if max_prob > 0.80:
-        class_ind = list(result).index(max_prob)
-        class_name = classes[class_ind]
-        # short_name = class_name[0]
-        full_name = class_name[1]
-    else:
-        full_name = 'No Disease'  # if confidence is less than 80 percent then "No disease"
-
-    # send message
-    message = '''
-       Patient Name: {}
-       Doctor Name: {}
-       Disease Name : {}
-       Confidence: {}
-
-       '''.format(patient_name, doctor_name, full_name, max_prob)
-    return message
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
