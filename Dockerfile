@@ -15,3 +15,6 @@ COPY . .
 
 # Specify the command to run on container start
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+RUN apt-get update && apt-get install -y libgl1-mesa-glx
+
