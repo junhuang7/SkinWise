@@ -1,25 +1,11 @@
 import re
 import streamlit as st
-def input_validation(uploaded_file, patient_name, patient_contact_number, doctor_name, doctor_contact_number):
+def input_validation(uploaded_file):
   #validate the inputs
   if not uploaded_file:
     st.error("Invalid file")
     st.stop()
 
-  if not patient_name or patient_name.strip() == '':
-    st.error("Invalid patient name")
-    st.stop()
-
-  if not patient_contact_number or patient_contact_number.strip() == '':
-    st.error("Invalid patient contact number")
-    st.stop()
-
-  if not doctor_name or doctor_name.strip() == '':
-    st.error("Invalid doctor name")
-    st.stop()
-  if not doctor_contact_number or doctor_contact_number.strip() == '':
-    st.error("Invalid doctor contact number")
-    st.stop()
 
 
   # patient_contact_number = patient_contact_number.replace(' ', '')

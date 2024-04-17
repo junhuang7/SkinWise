@@ -25,7 +25,7 @@ from validation import input_validation
 import re
 from io import StringIO
 
-def disease_detect(result_img, patient_name, patient_contact_number, doctor_name, doctor_contact_number):
+def disease_detect(result_img):
     model_name = 'Model/best_model.h5'
     model = get_model()
     model.load_weights(model_name)
@@ -47,12 +47,10 @@ def disease_detect(result_img, patient_name, patient_contact_number, doctor_name
 
     # send message
     message = '''
-       Patient Name: {}
-       Doctor Name: {}
        Disease Name : {}
        Confidence: {}
 
-       '''.format(patient_name, doctor_name, full_name, max_prob)
+       '''.format(full_name, max_prob)
     return message
 
 # Configure logging
@@ -230,13 +228,9 @@ if selected == "Data Entry":
         uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False, key=None, help=None,
                                          on_change=None,
                                          args=None, kwargs=None)
-        patient_name = st.text_input("Patient's Name")
-        patient_contact_number = st.text_input("Patient's Contact Number")
-        doctor_name = st.text_input("Doctor's Name")
-        doctor_contact_number = st.text_input("Doctor's Contact Number")
 
         if st.form_submit_button("Get Answer"):
-            input_validation(uploaded_file, patient_name, patient_contact_number, doctor_name, doctor_contact_number)
+            input_validation(uploaded_file)
 
             file_name = uploaded_file.name
             file_extension = os.path.splitext(file_name)[1]
@@ -248,8 +242,7 @@ if selected == "Data Entry":
                     f.write(bytes_data)
 
                 result_img = cv2.imread(f'test_images/temp.{file_extension}')
-                result = disease_detect(result_img, patient_name, patient_contact_number, doctor_name,
-                                        doctor_contact_number)
+                result = disease_detect(result_img)
                 st.success(result)
 
             else:
