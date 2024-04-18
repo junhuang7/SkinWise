@@ -21,9 +21,14 @@ import os
 from custom.essentials import stringToRGB, get_model
 # from custom.whatsapp import whatsapp_message
 
-from validation import input_validation
 import re
 from io import StringIO
+
+def input_validation(uploaded_file):
+  #validate the inputs
+  if not uploaded_file:
+    st.error("Invalid file")
+    st.stop()
 
 def disease_detect(result_img):
     model_name = 'Model/best_model.h5'
@@ -230,7 +235,7 @@ if selected == "Data Entry":
                                          args=None, kwargs=None)
 
         if st.form_submit_button("Get Answer"):
-            input_validation(uploaded_file)
+            input_validation(uploaded_file)  # Validate input
 
             file_name = uploaded_file.name
             file_extension = os.path.splitext(file_name)[1]
@@ -248,9 +253,6 @@ if selected == "Data Entry":
             else:
                 st.error('File must be one of .png, .jpg or .jpeg')
                 st.stop()
-
-
-
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
@@ -286,6 +288,3 @@ if selected == "Patients":
                     col4.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
             else:
                 st.write("No patients found or failed to fetch patients.")
-
-
-
