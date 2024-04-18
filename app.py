@@ -254,9 +254,6 @@ if selected == "Data Entry":
                 st.error('File must be one of .png, .jpg or .jpeg')
                 st.stop()
 
-
-
-
 if selected == "Patients":
     st.header("Patient Information Visualization")
     fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
