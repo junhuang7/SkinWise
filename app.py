@@ -261,10 +261,11 @@ if selected == "Patients":
     if st.session_state['fetch_counter'] > 0:
         with st.spinner('Fetching latest patients...'):
             patients = fetch_patients()
-            
+
             if patients:
                 for patient in patients:
                     patient_id = patient.id if patient.id else "Unknown ID"
+
                     # Initialize session state for each patient if not already present
                     if f'{patient_id}_given_name' not in st.session_state:
                         st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
@@ -275,10 +276,20 @@ if selected == "Patients":
 
                     col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
                     col1.markdown(f"**Patient ID: {patient_id}**")
-                    col1.text_input("First Name:", key=f'{patient_id}_given_name')
-                    col1.text_input("Family Name:", key=f'{patient_id}_family_name')
-                    col1.text_input("Birth Date (YYYY-MM-DD):", key=f'{patient_id}_birth_date')
+
+                    # Label row
+                    col1_1, col1_2, col1_3 = st.columns(3)
+                    col1_1.markdown("**First Name:**")
+                    col1_2.markdown("**Family Name:**")
+                    col1_3.markdown("**Birth Date (YYYY-MM-DD):**")
+
+                    # Input row
+                    col2_1, col2_2, col2_3 = st.columns(3)
+                    col2_1.text_input("", key=f'{patient_id}_given_name')
+                    col2_2.text_input("", key=f'{patient_id}_family_name')
+                    col2_3.text_input("", key=f'{patient_id}_birth_date')
                     
+                    # Action buttons
                     col2.button("Edit", key=f"edit_{patient_id}")
                     col3.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
                         'First Name': st.session_state[f'{patient_id}_given_name'],
