@@ -298,31 +298,37 @@ if selected == "Data Entry":
             save_patient_to_fhir(fhir_patient, form_data['Diagnosis'])
 
     # Interface B
-    with st.form("boolq form"):
-        label = 'choose a image file'
-        uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False, key=None, help=None,
-                                         on_change=None,
-                                         args=None, kwargs=None)
+    st.title("Skin Disease Detection by ML")
 
-        if st.form_submit_button("Get Answer"):
-            input_validation(uploaded_file)  # Validate input
+    with st.form(key="boolq form"):  # Naming the form with key parameter
+        label = 'Choose an image file'
+        uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False)
 
-            file_name = uploaded_file.name
-            file_extension = os.path.splitext(file_name)[1]
+        # Adding a submit button
+        submit_button = st.form_submit_button("Get Answer")
 
-            if file_extension in ['.jpg', '.jpeg', '.png']:
-                bytes_data = uploaded_file.getvalue()
+    # Processing form data when the submit button is clicked
+    if uploaded_file is not None:
+        input_validation(uploaded_file)  # Validate input
 
-                with open(f'test_images/temp.{file_extension}', 'wb') as f:
-                    f.write(bytes_data)
+        file_name = uploaded_file.name
+        file_extension = os.path.splitext(file_name)[1]
 
-                result_img = cv2.imread(f'test_images/temp.{file_extension}')
-                result = disease_detect(result_img)
-                st.success(result)
+        if file_extension in ['.jpg', '.jpeg', '.png']:
+            bytes_data = uploaded_file.getvalue()
 
-            else:
-                st.error('File must be one of .png, .jpg or .jpeg')
-                st.stop()
+            with open(f'test_images/temp.{file_extension}', 'wb') as f:
+                f.write(bytes_data)
+
+            result_img = cv2.imread(f'test_images/temp.{file_extension}')
+            result = disease_detect(result_img)
+
+            # Adding the uploaded image to the page with a caption
+            st.image(result_img, caption="Uploaded Image", use_column_width=True)
+            st.success(result)
+
+        else:
+            st.error('File must be one of .png, .jpg or .jpeg')
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
