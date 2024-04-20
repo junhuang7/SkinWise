@@ -6,6 +6,11 @@ from fhirclient import client
 from fhirclient.models.patient import Patient
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
+from fhirclient.models.condition import Condition
+from fhirclient.models.codeableconcept import CodeableConcept
+from fhirclient.models.coding import Coding
+from fhirclient.models.fhirreference import FHIRReference
+
 import logging
 
 from flask import Flask, request
@@ -23,6 +28,46 @@ from custom.essentials import stringToRGB, get_model
 
 import re
 from io import StringIO
+
+def initialize_patient_data(patients):
+    for patient in patients:
+        patient_id = patient.id if patient.id else "Unknown ID"
+        # Initialize session state for each patient if not already present
+        if f'{patient_id}_given_name' not in st.session_state:
+            st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
+        if f'{patient_id}_family_name' not in st.session_state:
+            st.session_state[f'{patient_id}_family_name'] = patient.name[0].family if patient.name and patient.name[0].family else "Unknown"
+        if f'{patient_id}_birth_date' not in st.session_state:
+            st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+        if f'edit_{patient_id}' not in st.session_state:
+            st.session_state[f'edit_{patient_id}'] = False
+
+def fetch_conditions(patient_id):
+    search = Condition.where(struct={'subject': f'Patient/{patient_id}'})
+    conditions = search.perform_resources(smart.server)
+    return conditions
+
+def create_fhir_condition(diagnosis, patient_id):
+    condition = Condition()
+    # Correctly linking the condition to the patient using 'subject' property with FHIRReference
+    condition.subject = FHIRReference({
+        'reference': f'Patient/{patient_id}'
+    })
+
+    # Set the diagnosis code using a CodeableConcept
+    diagnosis_code = CodeableConcept()
+    diagnosis_code.text = diagnosis
+    condition.code = diagnosis_code
+
+    # Set the verification status using a CodeableConcept
+    verification_status = CodeableConcept()
+    verification_status.coding = [Coding({
+        'system': 'http://terminology.hl7.org/CodeSystem/condition-ver-status',
+        'code': 'confirmed'
+    })]
+    condition.verificationStatus = verification_status
+
+    return condition
 
 def input_validation(uploaded_file):
   #validate the inputs
@@ -117,6 +162,33 @@ years = [datetime.today().year - i for i in range(100)]
 months = list(calendar.month_name[1:])
 days = list(range(1, 32))
 
+def update_condition_to_fhir(condition_id, diagnosis):
+    try:
+        condition = Condition.read(condition_id, smart.server)
+        
+        # Create a new CodeableConcept and Coding
+        coding = Coding({
+            'system': 'http://snomed.info/sct',  # Example system, adjust as necessary
+            'code': '123456',  # Example code, adjust as necessary
+            'display': diagnosis
+        })
+        diagnosis_code = CodeableConcept()
+        diagnosis_code.coding = [coding]
+        diagnosis_code.text = diagnosis
+
+        condition.code = diagnosis_code
+        result = condition.update(smart.server)
+        if result:
+            st.success(f"Condition {condition_id} updated successfully!")
+            logger.info(f"Condition {condition_id} updated successfully!")
+        else:
+            st.error("Failed to update condition")
+            logger.error("Failed to update condition")
+    except Exception as e:
+        st.error(f"Error updating condition: {e}")
+        logger.error(f"Failed to update condition: {e}", exc_info=True)
+
+
 def format_date(fhir_date):
     # Format the date to exclude time component.
     if fhir_date is not None and hasattr(fhir_date, 'date'):
@@ -132,8 +204,9 @@ def create_fhir_patient(form_data):
     patient.birthDate = FHIRDate(form_data['BirthDate'].split('T')[0])  # Use only the date part
     return patient
 
-def save_patient_to_fhir(patient):
+def save_patient_to_fhir(patient, diagnosis):
     try:
+        # First, create the patient
         result = patient.create(smart.server)
         if 'id' in result:
             patient_id = result['id']
@@ -141,11 +214,21 @@ def save_patient_to_fhir(patient):
             patient_birth_date = format_date(patient.birthDate) if patient.birthDate else "Birth Date Unknown"
             logger.info(f"Patient saved to FHIR server: ID = {patient_id}, Name = {patient_name}, Birth Date = {patient_birth_date}")
             st.success("Patient data saved to FHIR server successfully!")
+
+            # Now create the condition linked to the patient
+            if diagnosis:
+                condition = create_fhir_condition(diagnosis, patient_id)
+                condition_result = condition.create(smart.server)
+                if 'id' in condition_result:
+                    logger.info(f"Condition saved to FHIR server: ID = {condition_result['id']} for Patient ID = {patient_id}")
+                else:
+                    logger.error("Failed to save condition")
+                    st.error("Error saving condition to FHIR server")
         else:
             logger.error("Failed to save patient: No ID returned")
             st.error("Error saving to FHIR server: No ID returned")
     except Exception as e:
-        logger.error(f"Failed to save patient: {e}", exc_info=True)
+        logger.error(f"Failed to save patient and/or condition: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
 if 'fetch_clicked' not in st.session_state:
@@ -225,34 +308,44 @@ if selected == "Data Entry":
                 'BirthDate': birth_date.isoformat()
             }
             fhir_patient = create_fhir_patient(form_data)
-            save_patient_to_fhir(fhir_patient)
+            save_patient_to_fhir(fhir_patient, form_data['Diagnosis'])
 
     # Interface B
-    with st.form("boolq form"):
-        label = 'choose a image file'
-        uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False, key=None, help=None,
-                                         on_change=None,
-                                         args=None, kwargs=None)
+    st.title("Skin Disease Detection by ML")
 
-        if st.form_submit_button("Get Answer"):
-            input_validation(uploaded_file)  # Validate input
+    with st.form(key="boolq form"):  # Naming the form with key parameter
+        label = 'Choose an image file'
+        uploaded_file = st.file_uploader(label, type=None, accept_multiple_files=False)
 
-            file_name = uploaded_file.name
-            file_extension = os.path.splitext(file_name)[1]
+        # Adding a submit button
+        submit_button = st.form_submit_button("Get Answer")
 
-            if file_extension in ['.jpg', '.jpeg', '.png']:
-                bytes_data = uploaded_file.getvalue()
+    # Processing form data when the submit button is clicked
+    if uploaded_file is not None:
+        input_validation(uploaded_file)  # Validate input
 
-                with open(f'test_images/temp.{file_extension}', 'wb') as f:
-                    f.write(bytes_data)
+        file_name = uploaded_file.name
+        file_extension = os.path.splitext(file_name)[1]
 
-                result_img = cv2.imread(f'test_images/temp.{file_extension}')
-                result = disease_detect(result_img)
-                st.success(result)
+        if file_extension in ['.jpg', '.jpeg', '.png']:
+            bytes_data = uploaded_file.getvalue()
 
-            else:
-                st.error('File must be one of .png, .jpg or .jpeg')
-                st.stop()
+            with open(f'test_images/temp.{file_extension}', 'wb') as f:
+                f.write(bytes_data)
+
+            result_img = cv2.imread(f'test_images/temp.{file_extension}')
+            result = disease_detect(result_img)
+
+            # Adding the uploaded image to the page with a caption
+            st.image(result_img, caption="Uploaded Image", use_column_width=True)
+            st.success(result)
+
+        else:
+            st.error('File must be one of .png, .jpg or .jpeg')
+
+# Fetch and initialize data
+patients = fetch_patients()
+initialize_patient_data(patients)
 
 if selected == "Patients":
     st.header("Patient Information Visualization")
@@ -261,11 +354,15 @@ if selected == "Patients":
     if st.session_state['fetch_counter'] > 0:
         with st.spinner('Fetching latest patients...'):
             patients = fetch_patients()
-            
+
             if patients:
-                for patient in patients:
+                for i, patient in enumerate(patients):
                     patient_id = patient.id if patient.id else "Unknown ID"
+                    conditions = fetch_conditions(patient_id)
+
                     # Initialize session state for each patient if not already present
+                    if f'edit_{patient_id}' not in st.session_state:
+                        st.session_state[f'edit_{patient_id}'] = False
                     if f'{patient_id}_given_name' not in st.session_state:
                         st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
                     if f'{patient_id}_family_name' not in st.session_state:
@@ -273,18 +370,42 @@ if selected == "Patients":
                     if f'{patient_id}_birth_date' not in st.session_state:
                         st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
 
-                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
-                    col1.markdown(f"**Patient ID: {patient_id}**")
-                    col1.text_input("First Name:", key=f'{patient_id}_given_name')
-                    col1.text_input("Family Name:", key=f'{patient_id}_family_name')
-                    col1.text_input("Birth Date (YYYY-MM-DD):", key=f'{patient_id}_birth_date')
-                    
-                    col2.button("Edit", key=f"edit_{patient_id}")
-                    col3.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
-                        'First Name': st.session_state[f'{patient_id}_given_name'],
-                        'Family Name': st.session_state[f'{patient_id}_family_name'],
-                        'BirthDate': st.session_state[f'{patient_id}_birth_date']
-                    }))
-                    col4.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+                    # Display labels and inputs
+                    st.markdown(f"**Patient ID:** {patient_id}")
+
+                    label_cols = st.columns(3)
+                    label_cols[0].markdown("**First Name**")
+                    label_cols[1].markdown("**Family Name**")
+                    label_cols[2].markdown("**Birth Date (YYYY-MM-DD)**")
+
+                    input_cols = st.columns(3)
+                    input_cols[0].text_input("", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name', disabled=not st.session_state[f'edit_{patient_id}'])
+                    input_cols[1].text_input("", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name', disabled=not st.session_state[f'edit_{patient_id}'])
+                    input_cols[2].text_input("", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date', disabled=not st.session_state[f'edit_{patient_id}'])
+
+                    # Action buttons
+                    action_cols = st.columns([1, 1, 1])
+                    if action_cols[0].button("Edit", key=f"editbtn_{patient_id}"):
+                        st.session_state[f'edit_{patient_id}'] = not st.session_state[f'edit_{patient_id}']
+                    if action_cols[1].button("Submit", key=f"submit_{patient_id}"):
+                        update_patient_to_fhir(patient_id, {
+                            'First Name': st.session_state[f'{patient_id}_given_name'],
+                            'Family Name': st.session_state[f'{patient_id}_family_name'],
+                            'BirthDate': st.session_state[f'{patient_id}_birth_date']
+                        })
+                        st.session_state[f'edit_{patient_id}'] = False
+                    action_cols[2].button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+
+                    st.markdown(f"**Conditions:**")
+                    for condition in conditions:
+                        with st.expander(f"Condition ID: {condition.id} - {condition.code.text if condition.code else 'No diagnosis'}"):
+                            editable_diagnosis = st.text_input(f"Edit Diagnosis for Condition {condition.id}",
+                                                               value=condition.code.text if condition.code else '',
+                                                               key=f'diagnosis_{condition.id}')
+                            if st.button(f"Update Condition {condition.id}"):
+                                update_condition_to_fhir(condition.id, editable_diagnosis)
+                    # Dashed line separator
+                    if i < len(patients) - 1:
+                        st.markdown('<hr style="border-top: 1px dashed #bbb;">', unsafe_allow_html=True)
             else:
                 st.write("No patients found or failed to fetch patients.")
