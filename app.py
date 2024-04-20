@@ -274,6 +274,7 @@ if selected == "Patients":
                     if f'{patient_id}_birth_date' not in st.session_state:
                         st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
 
+                    st.markdown("#### Patient Information")
                     st.markdown("**Patient ID:** " + patient_id)
                     
                     # Input row with labels
