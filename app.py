@@ -267,6 +267,8 @@ if selected == "Patients":
                     patient_id = patient.id if patient.id else "Unknown ID"
 
                     # Initialize session state for each patient if not already present
+                    if f'edit_{patient_id}' not in st.session_state:
+                        st.session_state[f'edit_{patient_id}'] = False
                     if f'{patient_id}_given_name' not in st.session_state:
                         st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
                     if f'{patient_id}_family_name' not in st.session_state:
@@ -274,27 +276,29 @@ if selected == "Patients":
                     if f'{patient_id}_birth_date' not in st.session_state:
                         st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
 
-                    # Display labels in one row
+                    # Display labels and inputs
                     st.markdown(f"**Patient ID:** {patient_id}")
                     label_cols = st.columns(3)
                     label_cols[0].markdown("**First Name**")
                     label_cols[1].markdown("**Family Name**")
                     label_cols[2].markdown("**Birth Date (YYYY-MM-DD)**")
 
-                    # Display inputs in the next row
                     input_cols = st.columns(3)
-                    input_cols[0].text_input("", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name')
-                    input_cols[1].text_input("", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name')
-                    input_cols[2].text_input("", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date')
+                    input_cols[0].text_input("", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name', disabled=not st.session_state[f'edit_{patient_id}'])
+                    input_cols[1].text_input("", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name', disabled=not st.session_state[f'edit_{patient_id}'])
+                    input_cols[2].text_input("", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date', disabled=not st.session_state[f'edit_{patient_id}'])
 
                     # Action buttons
                     action_cols = st.columns([1, 1, 1])
-                    action_cols[0].button("Edit", key=f"edit_{patient_id}")
-                    action_cols[1].button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
-                        'First Name': st.session_state[f'{patient_id}_given_name'],
-                        'Family Name': st.session_state[f'{patient_id}_family_name'],
-                        'BirthDate': st.session_state[f'{patient_id}_birth_date']
-                    }))
+                    if action_cols[0].button("Edit", key=f"editbtn_{patient_id}"):
+                        st.session_state[f'edit_{patient_id}'] = not st.session_state[f'edit_{patient_id}']
+                    if action_cols[1].button("Submit", key=f"submit_{patient_id}"):
+                        update_patient_to_fhir(patient_id, {
+                            'First Name': st.session_state[f'{patient_id}_given_name'],
+                            'Family Name': st.session_state[f'{patient_id}_family_name'],
+                            'BirthDate': st.session_state[f'{patient_id}_birth_date']
+                        })
+                        st.session_state[f'edit_{patient_id}'] = False
                     action_cols[2].button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
 
                     # Dashed line separator
