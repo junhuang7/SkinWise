@@ -263,7 +263,7 @@ if selected == "Patients":
             patients = fetch_patients()
 
             if patients:
-                for patient in patients:
+                for i, patient in enumerate(patients):
                     patient_id = patient.id if patient.id else "Unknown ID"
 
                     # Initialize session state for each patient if not already present
@@ -274,28 +274,27 @@ if selected == "Patients":
                     if f'{patient_id}_birth_date' not in st.session_state:
                         st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
 
-                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
-                    col1.markdown(f"**Patient ID: {patient_id}**")
-
-                    # Label row
-                    col1_1, col1_2, col1_3 = st.columns(3)
-                    col1_1.markdown("**First Name:**")
-                    col1_2.markdown("**Family Name:**")
-                    col1_3.markdown("**Birth Date (YYYY-MM-DD):**")
-
-                    # Input row
-                    col2_1, col2_2, col2_3 = st.columns(3)
-                    col2_1.text_input("", key=f'{patient_id}_given_name')
-                    col2_2.text_input("", key=f'{patient_id}_family_name')
-                    col2_3.text_input("", key=f'{patient_id}_birth_date')
+                    st.markdown("#### Patient Information")
+                    st.markdown("**Patient ID:** " + patient_id)
                     
+                    # Input row with labels
+                    col1, col2, col3 = st.columns(3)
+                    col1.text_input("First Name", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name', label_visibility='collapsed')
+                    col2.text_input("Family Name", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name', label_visibility='collapsed')
+                    col3.text_input("Birth Date (YYYY-MM-DD)", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date', label_visibility='collapsed')
+
                     # Action buttons
-                    col2.button("Edit", key=f"edit_{patient_id}")
-                    col3.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
+                    col4, col5, col6 = st.columns(3)
+                    col4.button("Edit", key=f"edit_{patient_id}")
+                    col5.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
                         'First Name': st.session_state[f'{patient_id}_given_name'],
                         'Family Name': st.session_state[f'{patient_id}_family_name'],
                         'BirthDate': st.session_state[f'{patient_id}_birth_date']
                     }))
-                    col4.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+                    col6.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+
+                    # Dashed line separator
+                    if i < len(patients) - 1:
+                        st.markdown('<hr style="border-top: 3px dashed #bbb;">', unsafe_allow_html=True)
             else:
                 st.write("No patients found or failed to fetch patients.")
