@@ -274,27 +274,31 @@ if selected == "Patients":
                     if f'{patient_id}_birth_date' not in st.session_state:
                         st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
 
-                    st.markdown("#### Patient Information")
-                    st.markdown("**Patient ID:** " + patient_id)
-                    
-                    # Input row with labels
-                    col1, col2, col3 = st.columns(3)
-                    col1.text_input("First Name", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name', label_visibility='collapsed')
-                    col2.text_input("Family Name", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name', label_visibility='collapsed')
-                    col3.text_input("Birth Date (YYYY-MM-DD)", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date', label_visibility='collapsed')
+                    # Display labels in one row
+                    st.markdown(f"**Patient ID:** {patient_id}")
+                    label_cols = st.columns(3)
+                    label_cols[0].markdown("**First Name**")
+                    label_cols[1].markdown("**Family Name**")
+                    label_cols[2].markdown("**Birth Date (YYYY-MM-DD)**")
+
+                    # Display inputs in the next row
+                    input_cols = st.columns(3)
+                    input_cols[0].text_input("", value=st.session_state[f'{patient_id}_given_name'], key=f'{patient_id}_given_name')
+                    input_cols[1].text_input("", value=st.session_state[f'{patient_id}_family_name'], key=f'{patient_id}_family_name')
+                    input_cols[2].text_input("", value=st.session_state[f'{patient_id}_birth_date'], key=f'{patient_id}_birth_date')
 
                     # Action buttons
-                    col4, col5, col6 = st.columns(3)
-                    col4.button("Edit", key=f"edit_{patient_id}")
-                    col5.button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
+                    action_cols = st.columns([1, 1, 1])
+                    action_cols[0].button("Edit", key=f"edit_{patient_id}")
+                    action_cols[1].button("Submit", key=f"submit_{patient_id}", on_click=update_patient_to_fhir, args=(patient_id, {
                         'First Name': st.session_state[f'{patient_id}_given_name'],
                         'Family Name': st.session_state[f'{patient_id}_family_name'],
                         'BirthDate': st.session_state[f'{patient_id}_birth_date']
                     }))
-                    col6.button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
+                    action_cols[2].button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
 
                     # Dashed line separator
                     if i < len(patients) - 1:
-                        st.markdown('<hr style="border-top: 3px dashed #bbb;">', unsafe_allow_html=True)
+                        st.markdown('<hr style="border-top: 1px dashed #bbb;">', unsafe_allow_html=True)
             else:
                 st.write("No patients found or failed to fetch patients.")
