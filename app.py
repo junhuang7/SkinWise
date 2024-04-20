@@ -6,6 +6,11 @@ from fhirclient import client
 from fhirclient.models.patient import Patient
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models import humanname
+from fhirclient.models.condition import Condition
+from fhirclient.models.codeableconcept import CodeableConcept
+from fhirclient.models.coding import Coding
+from fhirclient.models.fhirreference import FHIRReference
+
 import logging
 
 from flask import Flask, request
@@ -23,6 +28,28 @@ from custom.essentials import stringToRGB, get_model
 
 import re
 from io import StringIO
+
+def create_fhir_condition(diagnosis, patient_id):
+    condition = Condition()
+    # Correctly linking the condition to the patient using 'subject' property with FHIRReference
+    condition.subject = FHIRReference({
+        'reference': f'Patient/{patient_id}'
+    })
+
+    # Set the diagnosis code using a CodeableConcept
+    diagnosis_code = CodeableConcept()
+    diagnosis_code.text = diagnosis
+    condition.code = diagnosis_code
+
+    # Set the verification status using a CodeableConcept
+    verification_status = CodeableConcept()
+    verification_status.coding = [Coding({
+        'system': 'http://terminology.hl7.org/CodeSystem/condition-ver-status',
+        'code': 'confirmed'
+    })]
+    condition.verificationStatus = verification_status
+
+    return condition
 
 def input_validation(uploaded_file):
   #validate the inputs
@@ -132,8 +159,9 @@ def create_fhir_patient(form_data):
     patient.birthDate = FHIRDate(form_data['BirthDate'].split('T')[0])  # Use only the date part
     return patient
 
-def save_patient_to_fhir(patient):
+def save_patient_to_fhir(patient, diagnosis):
     try:
+        # First, create the patient
         result = patient.create(smart.server)
         if 'id' in result:
             patient_id = result['id']
@@ -141,11 +169,21 @@ def save_patient_to_fhir(patient):
             patient_birth_date = format_date(patient.birthDate) if patient.birthDate else "Birth Date Unknown"
             logger.info(f"Patient saved to FHIR server: ID = {patient_id}, Name = {patient_name}, Birth Date = {patient_birth_date}")
             st.success("Patient data saved to FHIR server successfully!")
+
+            # Now create the condition linked to the patient
+            if diagnosis:
+                condition = create_fhir_condition(diagnosis, patient_id)
+                condition_result = condition.create(smart.server)
+                if 'id' in condition_result:
+                    logger.info(f"Condition saved to FHIR server: ID = {condition_result['id']} for Patient ID = {patient_id}")
+                else:
+                    logger.error("Failed to save condition")
+                    st.error("Error saving condition to FHIR server")
         else:
             logger.error("Failed to save patient: No ID returned")
             st.error("Error saving to FHIR server: No ID returned")
     except Exception as e:
-        logger.error(f"Failed to save patient: {e}", exc_info=True)
+        logger.error(f"Failed to save patient and/or condition: {e}", exc_info=True)
         st.error(f"Error saving to FHIR server: {e}")
 
 if 'fetch_clicked' not in st.session_state:
@@ -225,7 +263,7 @@ if selected == "Data Entry":
                 'BirthDate': birth_date.isoformat()
             }
             fhir_patient = create_fhir_patient(form_data)
-            save_patient_to_fhir(fhir_patient)
+            save_patient_to_fhir(fhir_patient, form_data['Diagnosis'])
 
     # Interface B
     with st.form("boolq form"):
