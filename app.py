@@ -152,7 +152,18 @@ days = list(range(1, 32))
 def update_condition_to_fhir(condition_id, diagnosis):
     try:
         condition = Condition.read(condition_id, smart.server)
-        condition.code = CodeableConcept(text=diagnosis)
+        
+        # Create a new CodeableConcept and Coding
+        coding = Coding({
+            'system': 'http://snomed.info/sct',  # Example system, adjust as necessary
+            'code': '123456',  # Example code, adjust as necessary
+            'display': diagnosis
+        })
+        diagnosis_code = CodeableConcept()
+        diagnosis_code.coding = [coding]
+        diagnosis_code.text = diagnosis
+
+        condition.code = diagnosis_code
         result = condition.update(smart.server)
         if result:
             st.success(f"Condition {condition_id} updated successfully!")
@@ -162,7 +173,7 @@ def update_condition_to_fhir(condition_id, diagnosis):
             logger.error("Failed to update condition")
     except Exception as e:
         st.error(f"Error updating condition: {e}")
-        logger.error(f"Failed to update condition: {e}")
+        logger.error(f"Failed to update condition: {e}", exc_info=True)
 
 
 def format_date(fhir_date):
