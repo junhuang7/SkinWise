@@ -29,6 +29,11 @@ from custom.essentials import stringToRGB, get_model
 import re
 from io import StringIO
 
+def fetch_conditions(patient_id):
+    search = Condition.where(struct={'subject': f'Patient/{patient_id}'})
+    conditions = search.perform_resources(smart.server)
+    return conditions
+
 def create_fhir_condition(diagnosis, patient_id):
     condition = Condition()
     # Correctly linking the condition to the patient using 'subject' property with FHIRReference
@@ -143,6 +148,22 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 years = [datetime.today().year - i for i in range(100)]
 months = list(calendar.month_name[1:])
 days = list(range(1, 32))
+
+def update_condition_to_fhir(condition_id, diagnosis):
+    try:
+        condition = Condition.read(condition_id, smart.server)
+        condition.code = CodeableConcept(text=diagnosis)
+        result = condition.update(smart.server)
+        if result:
+            st.success(f"Condition {condition_id} updated successfully!")
+            logger.info(f"Condition {condition_id} updated successfully!")
+        else:
+            st.error("Failed to update condition")
+            logger.error("Failed to update condition")
+    except Exception as e:
+        st.error(f"Error updating condition: {e}")
+        logger.error(f"Failed to update condition: {e}")
+
 
 def format_date(fhir_date):
     # Format the date to exclude time component.
@@ -303,6 +324,7 @@ if selected == "Patients":
             if patients:
                 for i, patient in enumerate(patients):
                     patient_id = patient.id if patient.id else "Unknown ID"
+                    conditions = fetch_conditions(patient_id)
 
                     # Initialize session state for each patient if not already present
                     if f'edit_{patient_id}' not in st.session_state:
@@ -316,6 +338,14 @@ if selected == "Patients":
 
                     # Display labels and inputs
                     st.markdown(f"**Patient ID:** {patient_id}")
+                    st.markdown(f"**Conditions:**")
+                    for condition in conditions:
+                        with st.expander(f"Condition ID: {condition.id} - {condition.code.text if condition.code else 'No diagnosis'}"):
+                            editable_diagnosis = st.text_input(f"Edit Diagnosis for Condition {condition.id}",
+                                                               value=condition.code.text if condition.code else '',
+                                                               key=f'diagnosis_{condition.id}')
+                            if st.button(f"Update Condition {condition.id}"):
+                                update_condition_to_fhir(condition.id, editable_diagnosis)
                     label_cols = st.columns(3)
                     label_cols[0].markdown("**First Name**")
                     label_cols[1].markdown("**Family Name**")
