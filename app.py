@@ -355,14 +355,7 @@ if selected == "Patients":
 
                     # Display labels and inputs
                     st.markdown(f"**Patient ID:** {patient_id}")
-                    st.markdown(f"**Conditions:**")
-                    for condition in conditions:
-                        with st.expander(f"Condition ID: {condition.id} - {condition.code.text if condition.code else 'No diagnosis'}"):
-                            editable_diagnosis = st.text_input(f"Edit Diagnosis for Condition {condition.id}",
-                                                               value=condition.code.text if condition.code else '',
-                                                               key=f'diagnosis_{condition.id}')
-                            if st.button(f"Update Condition {condition.id}"):
-                                update_condition_to_fhir(condition.id, editable_diagnosis)
+
                     label_cols = st.columns(3)
                     label_cols[0].markdown("**First Name**")
                     label_cols[1].markdown("**Family Name**")
@@ -385,7 +378,15 @@ if selected == "Patients":
                         })
                         st.session_state[f'edit_{patient_id}'] = False
                     action_cols[2].button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
-
+                    
+                    st.markdown(f"**Conditions:**")
+                    for condition in conditions:
+                        with st.expander(f"Condition ID: {condition.id} - {condition.code.text if condition.code else 'No diagnosis'}"):
+                            editable_diagnosis = st.text_input(f"Edit Diagnosis for Condition {condition.id}",
+                                                               value=condition.code.text if condition.code else '',
+                                                               key=f'diagnosis_{condition.id}')
+                            if st.button(f"Update Condition {condition.id}"):
+                                update_condition_to_fhir(condition.id, editable_diagnosis)
                     # Dashed line separator
                     if i < len(patients) - 1:
                         st.markdown('<hr style="border-top: 1px dashed #bbb;">', unsafe_allow_html=True)
