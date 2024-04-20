@@ -29,6 +29,19 @@ from custom.essentials import stringToRGB, get_model
 import re
 from io import StringIO
 
+def initialize_patient_data(patients):
+    for patient in patients:
+        patient_id = patient.id if patient.id else "Unknown ID"
+        # Initialize session state for each patient if not already present
+        if f'{patient_id}_given_name' not in st.session_state:
+            st.session_state[f'{patient_id}_given_name'] = patient.name[0].given[0] if patient.name and patient.name[0].given else "Unknown"
+        if f'{patient_id}_family_name' not in st.session_state:
+            st.session_state[f'{patient_id}_family_name'] = patient.name[0].family if patient.name and patient.name[0].family else "Unknown"
+        if f'{patient_id}_birth_date' not in st.session_state:
+            st.session_state[f'{patient_id}_birth_date'] = format_date(patient.birthDate) if patient.birthDate else "Unknown"
+        if f'edit_{patient_id}' not in st.session_state:
+            st.session_state[f'edit_{patient_id}'] = False
+
 def fetch_conditions(patient_id):
     search = Condition.where(struct={'subject': f'Patient/{patient_id}'})
     conditions = search.perform_resources(smart.server)
@@ -330,6 +343,10 @@ if selected == "Data Entry":
         else:
             st.error('File must be one of .png, .jpg or .jpeg')
 
+# Fetch and initialize data
+patients = fetch_patients()
+initialize_patient_data(patients)
+
 if selected == "Patients":
     st.header("Patient Information Visualization")
     fetch_button = st.button('Fetch Latest Patients', on_click=fetch_data)
@@ -378,7 +395,7 @@ if selected == "Patients":
                         })
                         st.session_state[f'edit_{patient_id}'] = False
                     action_cols[2].button("Delete", key=f"delete_{patient_id}", on_click=delete_patient_from_fhir, args=(patient_id,))
-                    
+
                     st.markdown(f"**Conditions:**")
                     for condition in conditions:
                         with st.expander(f"Condition ID: {condition.id} - {condition.code.text if condition.code else 'No diagnosis'}"):
