@@ -237,17 +237,29 @@ def fetch_patients():
 
 def delete_patient_from_fhir(patient_id):
     try:
+        # Fetch all conditions linked to the patient
+        search = Condition.where(struct={'subject': f'Patient/{patient_id}'})
+        conditions = search.perform_resources(smart.server)
+
+        # Delete each condition linked to this patient
+        for condition in conditions:
+            condition.delete(smart.server)
+            logger.info(f"Condition {condition.id} associated with patient {patient_id} deleted successfully")
+
+        # After deleting conditions, proceed to delete the patient
         patient = Patient.read(patient_id, smart.server)
         result = patient.delete(smart.server)
         if result:
             logger.info(f"Patient deleted from FHIR server: ID = {patient_id}")
-            st.success(f"Patient with ID {patient_id} deleted successfully!")
+            st.success(f"Patient with ID {patient_id} and all associated conditions deleted successfully!")
         else:
             logger.error("Failed to delete patient")
             st.error("Error deleting patient from FHIR server")
+
     except Exception as e:
-        logger.error(f"Failed to delete patient: {e}", exc_info=True)
+        logger.error(f"Failed to delete patient and conditions: {e}", exc_info=True)
         st.error(f"Error deleting from FHIR server: {e}")
+
 
 def update_patient_to_fhir(patient_id, updated_data):
     try:
