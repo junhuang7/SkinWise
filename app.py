@@ -1,7 +1,12 @@
-import streamlit as st
-from streamlit_option_menu import option_menu
-from datetime import datetime
+import os
+import cv2
+import logging
 import calendar
+import streamlit as st
+from datetime import datetime
+from custom.essentials import get_model
+from streamlit_option_menu import option_menu
+
 from fhirclient import client
 from fhirclient.models.patient import Patient
 from fhirclient.models.fhirdate import FHIRDate
@@ -10,24 +15,6 @@ from fhirclient.models.condition import Condition
 from fhirclient.models.codeableconcept import CodeableConcept
 from fhirclient.models.coding import Coding
 from fhirclient.models.fhirreference import FHIRReference
-
-import logging
-
-from flask import Flask, request
-import socket
-import numpy as np
-import io
-import cv2
-import json
-import base64
-import os
-#custom
-# from custom.credentials import token, account
-from custom.essentials import stringToRGB, get_model
-# from custom.whatsapp import whatsapp_message
-
-import re
-from io import StringIO
 
 def initialize_patient_data(patients):
     for patient in patients:
