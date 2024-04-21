@@ -6,7 +6,7 @@ SkinWise is a web application that offers a significant advantage in the early d
 
 ## Features
 - **Advanced Machine Learning Model**: Built using a convolutional neural network trained on the ISIC dataset for accurate prediction of skin cancer types.
-- **FHIR Integration**: Seamlessly manage patient information with real-time synchronization to the HAPI FHIR public server for interoperability with healthcare systems.
+- **FHIR Integration**: Seamlessly manage patient information with real-time synchronization to the HAPI FHIR public server http://hapi.fhir.org/baseR4/ for interoperability with healthcare systems.
 - **User-Friendly Interface**: Designed with Streamlit for ease of use, enabling quick uploading and analysis of images.
 - **Real-Time Diagnostic Suggestions**: Provides immediate, AI-driven diagnostic feedback.
 
