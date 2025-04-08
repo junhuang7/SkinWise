@@ -1,4 +1,4 @@
-streamlit==1.32.2
+streamlit==1.37.0
 streamlit_option_menu==0.3.12
 fhirclient==4.1.0
 flask==3.0.3
